@@ -1,0 +1,509 @@
+---
+title: "Preregistration: Segmentation harmonization"
+author:  "Laurenz Lammer"
+format:
+  pdf:
+    include-in-header:
+      text: |
+        \usepackage{booktabs}
+editor: visual
+bibliography: references.bib
+---
+
+## Study Information
+
+### Research Questions
+
+1.  Can available inter-scanner harmonization tools also harmonize brain volumetrics derived from different scanners and with different software?
+2.  How well can Longitudinal ComBat or neuroHarmonize harmonize longitudinal data from the same scanner?
+
+### Hypotheses
+
+1.  neuroHarmonize can harmonize datasets that are from different scanners and were produced with different brain segmentation software.
+2.  Both neuroHarmonize and Longitudinal Combat can harmonize longitudinal datasets.
+
+## Background
+
+In the pursuit of more precise estimates of the causes of, correlates of and trends in brain structure and function, increasing the sample size is amongst the most effective options[@poldrack_brain_2016]. Hence, numerous multicenter neuroimaging studies have been conducted to facilitate the recruitment and scanning of larger numbers of participants[@van_horn_multisite_2009]. Even larger sample sizes can be attained by conducting integrative data analyses (IDA) in which original data from multiple studies are pooled into one dataset[@curran_integrative_2009]. For example, Bethlehem et al. recently pooled over 100,000 brain MRIs to develop brain charts across the human lifespan[@bethlehem_brain_2022].
+
+A common issue for multicenter studies is that images acquired on different scanners differ systematically[@medawar_estimating_2021]. To confront this concern, several approaches for data-harmonization like ComBat have been established[@tassi_assessment_2024; @pomponio_harmonization_2020; @fortin_harmonization_2018; @beer_longitudinal_2020]. If cerebral measurements pooled in an IDA have been derived using different software solutions, an additional issue arises. Volumetrics measured with different software exhibit even larger differences than those derived using the same software on different scanners[@burkle_scan-rescan_2025].
+
+The simplest solution is to obtain the raw imaging data and process them homogeneously. For example, raw neuroimaging data from numerous studies can be applied for and easily accessed via the Image and Data Archive[@crawford_image_2016]. However, as processed segmentations are usually available, reusing them is highly desirable to accelerate research and foster sustainability[@govaart_sustainability_2022]. Alternatively, consortia like ENIGMA have integrated data from multiple studies and ensured their homogenous processing[@the_alzheimers_disease_neuroimaging_initiative_epigen_consortium_imagen_consortium_saguenay_youth_study_sys_group_enigma_2014]. However, such consortia only include a limited number of studies. Likewise, the raw data of many relevant neuroimaging studies are not easily available to IDA researchers. Many studies only share derivatives and no raw data. One reason for that are concerns on the identifiability of participants based on brain structure idiosyncrasies or refacing of defaced scans[@gao_pitfalls_2025; @wachinger_brainprint_2015]. Hence, exclusively relying on studies included in consortia or for which raw imaging data is available would be resource-intensive, introduce availabillity bias and limit the maximization of sample sizes.
+
+Therefore, we intend to investigate whether solutions developed to harmonize data from different scanners can also successfully harmonize derivatives with compounded scanner and software heterogeneity.
+
+Furthermore, we will use a longitudinal dataset to test the performance of different harmonization tools with repeated measures data. Additionally, we will test their performance on a volumetric that was derived by different softwares that utilised different MRI modalities.
+
+## Data description
+
+### Datasets Used
+
+We will use two existing datasets to answer our research questions. To test ComBat’s performance in harmonizing datasets in which software and scanner effects are compounded, we will use the data produced by Medawar et al. in their investigation of the effects of scanner-updates[@medawar_estimating_2021]. Additionally, we will use data from the longitudinal LIFE-Adult neuroimaging sample[@engel_cohort_2023] that will allow us to study the performance of Longitudinal ComBat in harmonizing segmentations that harness just one or more modalities. Furthermore, we will test how well neuroHarmonize[@pomponio_harmonization_2020], another harmonization tool employing GAMs but not tailored to longitudinal datasets, performs with such a dataset.
+
+### Data availability
+
+-   [x] The dataset is publicly available.
+
+-   [x] The dataset is available through protected access.
+
+-   [ ] The dataset is not publicly available.
+
+The LIFE-Adult study data will exclusively be shared by [LIFE](https://www.uniklinikum-leipzig.de/einrichtungen/life) based on a project proposal under data protection rules according to the University of Leipzig. Processed data of the original scanner-update study can be accessed under the following [link](https://github.com/fBeyer89/life_upgrade/tree/master/r/data). All data required to reproduce our analyses on this dataset will be made publicly available. Raw data can be requested from the authors of the original publication.
+
+### Data Identifiers {#DataIdentifiers}
+
+[Link](https://github.com/fBeyer89/life_upgrade/tree/master/r/data)
+
+### Access Date
+
+The data have been accessed by different authors of this study throughout the last years for different research projects[@medawar_estimating_2021; @lammer_impact_2023; @beyer_progression_2024; @lammer_generalized_2025]. The newly added segmentations have been performed in December 2025.
+
+### Data Collection Procedures
+
+The data collection procedures of LIFE-Adult are described in Engel at al.[@engel_cohort_2023] and the scanner-update procedures in Medawar et al.[@medawar_estimating_2021]
+
+### Codebook
+
+LIFE provides relevant sections of its codebook to all applicants whose proposals have been accepted.
+
+## Variables
+
+### Manipulated Variables
+
+#### Scanner-update
+
+We will assess the harmonizability of the following volumes:
+
+-   Total intracranial volume (TIV)[^1] - unit: $dm^3$
+
+-   Total grey matter volume (TGMV) - unit: $100 cm^3$
+
+-   Total white matter volume (TWMV) - unit: $100 cm^3$
+
+-   Total cortical volume (TCV) - unit: $100 cm^3$
+
+-   Lateral ventricle volume (LVV) - unit: $10 cm^3$
+
+-   Hippocampal volume (HCV) - unit: $cm^3$
+
+-   Amygdala volume (AV) - unit: $cm^3$
+
+[^1]: TIV is always exactly the same when derived from Freesurfer's longitudial recon-all pipeline. Hence, it does not make sense to compare this TIV.
+
+The original segmentation using FreeSurfer’s version 6.0.0p1 longitudial recon-all pipeline is described in Medawar et al.[@medawar_estimating_2021] We repeated the processing but used FreeSurfer's version 7.4.1 cross-sectional pipeline instead to assess the effect of different versions of the same software. Additionally, we ran FreeSurfer’s version 7.4.1 cross-sectional samseg pipeline and SPM’s 12.7771 CAT-12.9 cross-sectional pipeline. All processing was performed with default settings.
+
+#### LIFE Adult
+
+In this dataset, we will compare volumetrics derived using FreeSurfer’s version 5.3.0 longitudinal recon-all (using only T1-weighted images) with FreeSurfer’s version 7.4.1 longitudinal SAMSEG (using both T1-weighted and FLAIR images). The processing has been described before.[@lammer_impact_2023; @lammer_generalized_2025]
+
+In addition to the above mentioned variables (with the exception of TWMV and TIV[^2]), we will also use white matter hyperintensity volume (WMHV) in analyses of the LIFE-Adult Study. WMHV was estimated using FreeSurfer’s version 7.4.1 longitudinal SAMSEG (using both T1-weighted and FLAIR images) and the longitudinal pipeline of the Lesion Segmentation Toolbox version 3.0.0 (using FLAIR images for WMHV measurement). Details on the processing can be found in previous publications[@beyer_progression_2024; @lammer_generalized_2025].
+
+[^2]: We will not assess total white matter volume because FreeSurfer version 5.3.0 does not provide a measure of total white matter volume in its aseg.stats file. We will also not assess change in TIV as no meaningful change in TIV is to be expected .
+
+As a last step before statistical reliability analyses, we will calculate change values for all variables and use them as our outcome of interest.
+
+### Derivation of composite volumes
+
+ROI volumes for CAT12 will be derived using the Estimate Mean Values inside ROI function. Individual grey matter, white matter and CSF volumes for each ROI of the neuromorphometrics atlas provided by CAT12 will be added up to derive ROI volumes.
+
+Details on how composite volumes are derived in each segmentation are provided in the table below:
+
+| ROI | Recon-all | Cat12 | Samseg |
+|---:|:--:|:--:|:---|
+| TIV | EstimatedTotalIntra CranialVol from aseg.stats | TIV from get TIV function | sbTIV from sbtiv.stats |
+| TGMV | TotalGrayVol from aseg.stats | TGMV from get TIV function | see[^3] |
+| TWMV | Sum of lhCerebralWhiteMatterVol, rhCerebralWhiteMatterVol, Left.Cerebellum.White.Matter, Right.Cerebellum.White.Matter from aseg.stats | TWMV from get TIV function | Sum of lhCerebralWhiteMatterVol, rhCerebralWhiteMatterVol, Left.Cerebellum. White.Matter, Right.Cerebellum. White.Matter from samseg.stats |
+| TCV | CortexVol from aseg.stats | see[^4] | Sum of Right.Cerebral.Cortex, Left.Cerebral.Cortex from samseg.stats |
+| LVV | Sum of Right.Lateral.Ventricle, Left.Lateral.Ventricle from aseg.stats | Sum of Left.Lateral.Ventricle, Right.Lateral.Ventricle of the neuromorphometrics atlas | Sum of Left.Lateral.Ventricle, Right.Lateral.Ventricle from samseg.stats |
+| HCV | Sum of Left.Hippocampus, Right.Hippocampus from aseg.stats | Sum of Left.Hippocampus, Right.Hippocampus of the neuromorphometrics atlas | Sum of Left.Hippocampus, Right.Hippocampus from samseg.stats |
+| AV | Sum of Left.Amygdala, Right.Amygdala from aseg.stats | Sum of Left.Amygdala, Right.Amygdala of the neuromorphometrics atlas | Sum of Left.Amygdala, Right.Amygdala from samseg.stats |
+
+[^3]: Sum of Right.Cerebral.Cortex, Left.Cerebral.Cortex, Left.Cerebellum.Cortex, Right.Cerebellum.Cortex, Left.Thalamus, Right.Thalamus, Left.Caudate, Right.Caudate, Left.Putamen, Right.Putamen, Left.Pallidum, Right.Pallidum, Left.Hippocampus, Right.Hippocampus, Left.Amygdala, Right.Amygdala, Left.Accumbens.area, Right.Accumbens.area, Left.VentralDC, Right.VentralDC from samseg.stats
+
+[^4]: Sum of Right.ACgG.anterior.cingulate.gyrus, Left.ACgG.anterior.cingulate.gyrus, Right.AIns.anterior.insula, Left.AIns.anterior.insula, Right.AOrG.anterior.orbital.gyrus, Left.AOrG.anterior.orbital.gyrus, Right.AnG.angular.gyrus, Left.AnG.angular.gyrus, Right.Calc.calcarine.cortex, Left.Calc.calcarine.cortex, Right.CO.central.operculum, Left.CO.central.operculum, Right.Cun.cuneus, Left.Cun.cuneus, Right.Ent.entorhinal.area, Left.Ent.entorhinal.area, Right.FO.frontal.operculum, Left.FO.frontal.operculum, Right.FRP.frontal.pole, Left.FRP.frontal.pole, Right.FuG.fusiform.gyrus, Left.FuG.fusiform.gyrus, Right.GRe.gyrus.rectus, Left.GRe.gyrus.rectus, Right.IOG.inferior.occipital.gyrus, Left.IOG.inferior.occipital.gyrus, Right.ITG.inferior.temporal.gyrus, Left.ITG.inferior.temporal.gyrus, Right.LiG.lingual.gyrus, Left.LiG.lingual.gyrus, Right.LOrG.lateral.orbital.gyrus, Left.LOrG.lateral.orbital.gyrus, Right.MCgG.middle.cingulate.gyrus, Left.MCgG.middle.cingulate.gyrus, Right.MFC.medial.frontal.cortex, Left.MFC.medial.frontal.cortex, Right.MFG.middle.frontal.gyrus, Left.MFG.middle.frontal.gyrus, Right.MOG.middle.occipital.gyrus, Left.MOG.middle.occipital.gyrus, Right.MOrG.medial.orbital.gyrus, Left.MOrG.medial.orbital.gyrus, Right.MTG.middle.temporal.gyrus, Left.MTG.middle.temporal.gyrus, Right.OCP.occipital.pole, Left.OCP.occipital.pole, Right.OFuG.occipital.fusiform.gyrus, Left.OFuG.occipital.fusiform.gyrus, Right.OpIFG.opercular.part.of.the.inferior.frontal.gyrus, Left.OpIFG.opercular.part.of.the.inferior.frontal.gyrus, Right.OrIFG.orbital.part.of.the.inferior.frontal.gyrus, Left.OrIFG.orbital.part.of.the.inferior.frontal.gyrus, Right.PCgG.posterior.cingulate.gyrus, Left.PCgG.posterior.cingulate.gyrus, Right.PCu.precuneus, Left.PCu.precuneus, Right.PHG.parahippocampal.gyrus, Left.PHG.parahippocampal.gyrus, Right.PIns.posterior.insula, Left.PIns.posterior.insula, Right.PO.parietal.operculum, Left.PO.parietal.operculum, Right.PoG.postcentral.gyrus, Left.PoG.postcentral.gyrus, Right.POrG.posterior.orbital.gyrus, Left.POrG.posterior.orbital.gyrus, Right.PP.planum.polare, Left.PP.planum.polare, Right.PrG.precentral.gyrus, Left.PrG.precentral.gyrus, Right.PT.planum.temporale, Left.PT.planum.temporale, Right.SCA.subcallosal.area, Left.SCA.subcallosal.area, Right.SFG.superior.frontal.gyrus, Left.SFG.superior.frontal.gyrus, Right.SMG.supramarginal.gyrus, Left.SMG.supramarginal.gyrus, Right.SOG.superior.occipital.gyrus, Left.SOG.superior.occipital.gyrus, Right.SPL.superior.parietal.lobule, Left.SPL.superior.parietal.lobule, Right.STG.superior.temporal.gyrus, Left.STG.superior.temporal.gyrus, Right.TMP.temporal.pole, Left.TMP.temporal.pole, Right.TrIFG.triangular.part.of.the.inferior.frontal.gyrus, Left.TrIFG.triangular.part.of.the.inferior.frontal.gyrus, Right.TTG.transverse.temporal.gyrus, Left.TTG.transverse.temporal.gyrus of the neuromorphometrics atlas \|
+
+#### Harmonization
+
+We will harmonize the scanner-update datasets employing neuroHarmonize as implemented by Pomponio et al.[@pomponio_harmonization_2020] with gender and a smooth term for age as covariates. For the scanner-update study, each segmentation and scanner combination will be treated as its own batch (2 scanners x 4 segmentations = 8 batches). The complete dataset and the dataset without scans with manual edits (for the sensitivity analysis) will be harmonized separately.
+
+```{python}
+#| eval: false
+#| echo: true
+# volumes is a numpy array of the volumes of the ROIs in question
+# covars is a pandas dataframe containing the covariates age and gender
+model, data_adj = harmonizationLearn(volumes, covars, smooth_terms=['age'])
+```
+
+For the LIFE dataset, we will have two batches (recon-all and samseg) and two batches for WMHV (samseg, longitudinal LST). These will be both harmonized with neuroHarmonize with the same set of covariates and Longitudinal ComBat[@beer_longitudinal_2020] with gender and age as covariates[@pomponio_harmonization_2020]. The complete dataset, the dataset without scans with manual edits (for the sensitivity analysis) and the WMHV data will be harmonized separately. For neuroHarmonize, we will generate a model based on the baseline data and apply it to the follow-up data. The minimum and maximum value of age across the entire dataset will be supplied as smooth term bounds for both models. As WMHV is only one feature, the empirical Bayes option will not be employed in this case.
+
+```{python}
+#| eval: false
+#| echo: true
+# (fu_)volumes is a numpy array of the volumes of the ROIs at BL/FU
+# (fu_)covars is a pandas df containing age and gender at BL/FU
+bl_model, bl_data_adj = harmonizationLearn(volumes, covars, 
+                        smooth_terms=['AGE'], 
+                        smooth_term_bounds=(age_min, age_max))
+fu_data_adj = harmonizationApply(fu_volumes, fu_covars, bl_model)
+```
+
+Longitudinal ComBat was designed to handle repeated measures scenarios and can thus harmonize data from all timepoints right away.
+
+```{r}
+#| echo: true
+#| eval: false
+df_adj <- longCombat(idvar='id', timevar='timepoint', formula='AGE + GENDER',
+                     features = featurenames,
+                     ranef='(1|id)', batchvar = "SITE", data=df)
+```
+
+Importantly, longitudinal ComBat cannot handle dataframes with only one feature as is the case for WMHV. Hence, we add another "ghost" feature with the value 1 in all rows for this df. \### Measured Variables
+
+Age (continuous) and gender (dichotomous) will be used as covariates in the harmonization process. The female gender will be coded as 0. Age will be scaled as $age_i = (age_i - min(age))/sd(age)$.
+
+#### Neuroimaging
+
+The details of the MRI scanners and the sequences have been described in previous work[@medawar_estimating_2021; @lammer_generalized_2025].
+
+### Unit of Analysis
+
+#### Scanner-update
+
+For the scanner-update dataset, we will include all individuals(after manual editing if necessary)[@medawar_estimating_2021].
+
+#### LIFE-Adult
+
+All participants that have available samseg (version 7.4.0 using FLAIR and T1) and recon-all (version 5.3.0 using T1) segmentations will be included if their scans were labelled as usable by a trained clinician. For WMHV values, we will exclude participants whose scans have been categorised as having quality concerns due to motion (LCL quality = 1), ventricular expansion which led to regression of lesion voxels (LCL quality = 2), and brain pathologies such as stroke or congenital lesions (LCL quality = 3).
+
+### Missing Data
+
+No imputation is planned for either dataset. SEMs will use FIML.
+
+### Statistical Outliers
+
+We will not exclude statistical outliers.
+
+### Sampling Weights
+
+No sampling weights will be used.
+
+## Knowledge of data
+
+### Prior Publication/Dissemination
+
+Most of the data in their unharmonized form have been created and analysed before. The results have been published in the following articles[@medawar_estimating_2021; @lammer_impact_2023; @beyer_progression_2024; @lammer_generalized_2025]. Some of the data has been publicly available prior to the beginning of this project (see [Data Identifiers](#DataIdentifiers)).
+
+### Prior Knowledge
+
+As described above, most of the pre-harmonised data was created by and is thus known to the authors.
+
+## Analyses
+
+### Statistical Models
+
+We will calculate the intraclass correlation coefficient within each dataset before and after harmonization using the absolute agreement two-way random-effects model without averaging across raters. Treating the column effects as random-effects allows us to generalize the results to a larger population of raters from which the sample of raters was drawn[@mcgraw_forming_1996]. The ICC assumes that column effects are independent which is not fulfilled for the scanner-update dataset because columns of the same scanner/segmentation are not independent. Therefore, we expand the classical ICC notion by estimating a separate random effect for the scanner and one for the segmentation.
+
+$$
+y = id + scanner + segmentation + \varepsilon
+$$
+
+$$
+id \sim \mathcal{N}(0, \sigma^2_{id}), \quad
+scanner \sim \mathcal{N}(0, \sigma^2_{scanner}), \quad
+segmentation \sim \mathcal{N}(0, \sigma^2_{segmentation}), \quad
+\varepsilon \sim \mathcal{N}(0, \sigma^2_{\varepsilon})
+$$
+
+For a given variable y (e.g. HCV) three random intercepts (individual, scanner and segmentation) that are normally distributed around 0 and an error term are estimated. The model will be estimated using lmer from the lme4 package. The ICC is ensuingly calculated as:
+
+$$
+ICC = \frac{\sigma^2_{id}}{\sigma^2_{id} + \sigma^2_{scanner} + \sigma^2_{segmentation} + \sigma^2_{\varepsilon}}
+$$
+
+The ICCs confidence interval will be derived by bootstrapping 1000 times.
+
+For the LIFE-Adult dataset, the ICC function of the psych package can be used.
+
+Additionally, we will calculate the percent difference (PD) to quantify the size and direction of the relative difference. We are going to calculate the mean of the PD for each structure j across n participants according to:
+
+$$
+PD_j = 100 * \frac{2}{n} \sum_{i=1}^{n} \frac{V_{ij} - S_{ij}}{V_{ij} + S_{ij}}
+$$
+
+where V~ij~ is the volume of a structure j of participant i in one batch and S~ij~ is the volume of the structure j of participant i in another batch. All batches will be compared with one another.
+
+Furthermore, we will calculate a two-sided paired t-tests for the LIFE-Adult study using the t_test function of the *rstatix* R-package and a repeated measures two-sided anova for the scanner-update dataset using the anova_test and get_anova_table functions of the same package. The repeated measures anova will be followed up with pairwise two-sided paired t-tests using the pairwise_t_test function of the *rstatix* package and internal Hommel correction.
+
+Moreover, we will present Bland-Altman plots created with the *BlandAltmanLeh* R-package.
+
+Brandmaier et al. have introduced intraclass effect decomposition (ICED) which uses structural equation modelling to discern individual sources of variation in a dataset[@brandmaier_assessing_2018]. This approach allows us to identify the reliability of specific scanner-segmentation combinations in the scanner-update dataset before and after harmonization. In this SEM, all eight observed variables will indicate one "truth" latent variable. Additionally, all observed variables from one scanner will indicate a scanner latent variable (total of two latent scanner variables), all from one segmentation will indicate a segmentation latent variable (total of four segmentation variables) and all will have one error term (all error terms with the same variance). All variances will be orthogonal to one another. All factor loadings will be constrained to 1.0. A mean will be estimated for the "truth", the second scanner and the second to fourth segmentation latent variables. You can find the lavaan code in the [appendix](#lavaan-models).\
+The ICED-ICC for each scanner-segmentation combination will be calculated as:
+
+$$
+ICC = \frac{\sigma^2_{truth}}{\sigma^2_{truth} + \sigma^2_{scanner} + \sigma^2_{segmentation} + \sigma^2_{\varepsilon}}
+$$
+
+If any variances are going to be estimated to be negative with a standard error larger than the variances difference to 0, we will treat them as 0 in the ICC calculation.
+
+### Effect Size
+
+The ICC will be our primary outcome. Numerous discordant guidelines for evaluating ICCs have been proposed. Koo and Li suggest that “values less than 0.5 are indicative of poor reliability, values between 0.5 and 0.75 indicate moderate reliability, values between 0.75 and 0.9 indicate good reliability, and values greater than 0.90 indicate excellent reliability”[@koo_guideline_2016]. Landis and Koch propose the following labels: \< 0: poor; 0.00-0.20: *slight*; 0.21-0.40: *fair*; 0.41-0.60: *moderate*; 0.61-0.80: *substantial*; 0.81-1.00: *almost perfect*[@landis_measurement_1977]. Alternatively, Cicchetti suggests that “when the reliability coefficient is below .40, the level of clinical significance is poor; when it is between .40 and .59, the level of clinical significance is fair; when it is between .60 and .74, the level of clinical significance is good; and when it is between .75 and 1.00, the level of clinical significance is excellent.”[@cicchetti_guidelines_1994] In line with the previous work on scanner differences[@medawar_estimating_2021], we will use Cicchetti’s guidelines.
+
+Moreover, we will consider a PD less than 2% to be negligible.
+
+### Statistical Power
+
+Cohen’s suggestion of a small effect size (d = 0.2; η2 = 0.01)[@jacob_cohen_statistical_2013] roughly coincides with a PD of 2% for HCV[@lammer_generalized_2025]. For the t-test used for the LIFE-Adult study we used a conservative sample size and calculated:
+
+```{r}
+#| echo: true
+#| results: "hide"
+#| warning: false
+#| message: false
+#| error: false
+library(pwrss)
+power_life <- power.t.student(d = 0.20, n2 = 750, alpha = 0.05, 
+              alternative = "two.sided", design = "paired")
+```
+
+which lead to a power of `r power_life$power*100`%. Conservatively assuming a Bonferroni correction over the 6 brain measures (alpha = 0.05/6), we calculated:
+
+```{r}
+#| echo: true
+#| results: "hide"
+#| warning: false
+#| message: false
+#| error: false
+power_life_bonferroni <- power.t.student(d = 0.20, n2 = 750, alpha = 0.05/6, 
+                         alternative = "two.sided", design = "paired")
+```
+
+in which case we would still have a power of `r power_life_bonferroni$power*100`%. For the repeated measures anova of the scanner-update dataset with 4 different software implementations we used:
+
+```{r}
+#| echo: true
+#| results: "hide"
+#| warning: false
+#| message: false
+#| error: false
+power_scanner_update <- power.f.mixed.anova(eta.squared = 0.01, 
+                        factor.levels = c(1, 8), n.total = 115,
+                        alpha = 0.05, rho.within = 0.80, 
+                        effect = "within")
+```
+
+This lead to a power of `r power_scanner_update$power*100`%. With a Bonferroni corrected alpha level (divided by 7 because there is no WMHV measurement):
+
+```{r}
+#| echo: true
+#| results: "hide"
+#| warning: false
+#| message: false
+#| error: false
+power_scanner_update_bonferroni <- power.f.mixed.anova(eta.squared = 0.01, 
+                                   factor.levels = c(1, 8), n.total = 115,
+                                   alpha = 0.05/7, rho.within = 0.80, 
+                                   effect = "within")
+```
+
+In this case, the power is `r power_scanner_update_bonferroni$power*100`%.
+
+### Inference Criteria
+
+The ICC will be our main inference criterion. The standard alpha-level of 5% (FWER corrected using the Hommel method, all outcomes (HCV, ICV, …) in one dataset are considered one family of tests) will be used but should not be considered independent of the PD and ICC in light of the large sample sizes. A combination of a non-significant p-value, an ICC \> 0.75 and a PD \< 2% will be judged as no concern. A significant p-value, an ICC \< 0.75 and a PD \> 2% will be interpreted as a clear reason for concern. Mixed cases will have to be judged in a nuanced manner. Different conclusions for different brain structures may be drawn.
+
+The ICED-model will not be the basis for our inferences.
+
+### Assumption Violation / Model Non-Convergence
+
+We will use histograms to visually check whether our variables follow a normal distribution. We expect to perform an asinh transformation of WMHV. The Greenhouse-Geisser sphericity correction for the Anova will be performed by the get_anova_table function if necessary.
+
+### Reliability and Robustness Testing
+
+Not all pipelines underwent manual editing after processing. In the LIFE-Adult dataset, the recon-all 5.3.0 segmentation and in the scanner-update dataset the longitudinal recon-all 6.0.0p segmentation were manually edited. Our primary analyses compare the volumetrics nonetheless to test the harmonizability of results of such heterogeneous processing. As a sensitivity analysis, we will repeat our tests while excluding scans of participants that have been manually edited.
+
+### Exploratory Analysis
+
+At this point, no exploratory analyses are planned.
+
+## References
+
+::: {#refs}
+:::
+
+# Appendix {.appendix}
+
+## lavaan models {#lavaan-models}
+
+For all models but the TIV-models the lavaan syntax will be:
+
+```{r}
+#| echo: true
+#| eval: false
+model <- '
+! regressions 
+   truth=~1.0*ROI_SKYRA_samseg
+   truth=~1.0*ROI_VERIO_samseg
+   truth=~1.0*ROI_SKYRA_recon6
+   truth=~1.0*ROI_VERIO_recon6
+   truth=~1.0*ROI_VERIO_recon7
+   truth=~1.0*ROI_SKYRA_recon7
+   truth=~1.0*ROI_SKYRA_cat
+   truth=~1.0*ROI_VERIO_cat
+   SKYRA=~1.0*ROI_SKYRA_samseg
+   SKYRA=~1.0*ROI_SKYRA_recon6
+   SKYRA=~1.0*ROI_SKYRA_recon7
+   SKYRA=~1.0*ROI_SKYRA_cat
+   VERIO=~1.0*ROI_VERIO_samseg
+   VERIO=~1.0*ROI_VERIO_recon6
+   VERIO=~1.0*ROI_VERIO_recon7
+   VERIO=~1.0*ROI_VERIO_cat
+   samseg=~1.0*ROI_SKYRA_samseg
+   samseg=~1.0*ROI_VERIO_samseg
+   recon6=~1.0*ROI_SKYRA_recon6
+   recon6=~1.0*ROI_VERIO_recon6
+   recon7=~1.0*ROI_VERIO_recon7
+   recon7=~1.0*ROI_SKYRA_recon7
+   cat=~1.0*ROI_SKYRA_cat
+   cat=~1.0*ROI_VERIO_cat
+! residuals, variances and covariances
+   ROI_SKYRA_samseg ~~ obsvar*ROI_SKYRA_samseg
+   ROI_VERIO_samseg ~~ obsvar*ROI_VERIO_samseg
+   ROI_SKYRA_recon6 ~~ obsvar*ROI_SKYRA_recon6
+   ROI_VERIO_recon6 ~~ obsvar*ROI_VERIO_recon6
+   ROI_VERIO_recon7 ~~ obsvar*ROI_VERIO_recon7
+   ROI_SKYRA_recon7 ~~ obsvar*ROI_SKYRA_recon7
+   ROI_SKYRA_cat ~~ obsvar*ROI_SKYRA_cat
+   ROI_VERIO_cat ~~ obsvar*ROI_VERIO_cat
+   truth ~~ truevar*truth
+   SKYRA ~~ SKYRAvar*SKYRA
+   VERIO ~~ VERIOvar*VERIO
+   samseg ~~ samsegvar*samseg
+   recon6 ~~ recon6var*recon6
+   recon7 ~~ recon7var*recon7
+   cat ~~ catvar*cat
+   truth ~~ 0.0*SKYRA
+   truth ~~ 0.0*VERIO
+   truth ~~ 0.0*samseg
+   truth ~~ 0.0*recon6
+   truth ~~ 0.0*recon7
+   truth ~~ 0.0*cat
+   SKYRA ~~ 0.0*VERIO
+   SKYRA ~~ 0.0*samseg
+   SKYRA ~~ 0.0*recon6
+   SKYRA ~~ 0.0*recon7
+   SKYRA ~~ 0.0*cat
+   VERIO ~~ 0.0*samseg
+   VERIO ~~ 0.0*recon6
+   VERIO ~~ 0.0*recon7
+   VERIO ~~ 0.0*cat
+   samseg ~~ 0.0*recon6
+   samseg ~~ 0.0*recon7
+   samseg ~~ 0.0*cat
+   recon6 ~~ 0.0*recon7
+   recon6 ~~ 0.0*cat
+   recon7 ~~ 0.0*cat
+! means
+   # the means are relative to samseg-SKYRA
+   SKYRA~0*1;
+   samseg~0*1;
+   VERIO~VERIOmean*1
+   recon6~recon6mean*1
+   recon7~recon7mean*1
+   cat~catmean*1
+   truth~truemean*1
+   ROI_SKYRA_samseg~0*1;
+   ROI_VERIO_samseg~0*1;
+   ROI_SKYRA_recon6~0*1;
+   ROI_VERIO_recon6~0*1;
+   ROI_VERIO_recon7~0*1;
+   ROI_SKYRA_recon7~0*1;
+   ROI_SKYRA_cat~0*1;
+   ROI_VERIO_cat~0*1;
+'
+fit <- lavaan(model = model, data=df, fixed.x=FALSE, missing="FIML")
+```
+
+For the TIV-models it will be analogous but without the SKYRA-recon6 variable:
+
+```{r}
+#| echo: true
+#| eval: false
+model <- '
+! regressions 
+   truth=~1.0*TIV_SKYRA_samseg
+   truth=~1.0*TIV_VERIO_samseg
+   truth=~1.0*TIV_VERIO_recon6
+   truth=~1.0*TIV_VERIO_recon7
+   truth=~1.0*TIV_SKYRA_recon7
+   truth=~1.0*TIV_SKYRA_cat
+   truth=~1.0*TIV_VERIO_cat
+   SKYRA=~1.0*TIV_SKYRA_samseg
+   SKYRA=~1.0*TIV_SKYRA_recon7
+   SKYRA=~1.0*TIV_SKYRA_cat
+   VERIO=~1.0*TIV_VERIO_samseg
+   VERIO=~1.0*TIV_VERIO_recon6
+   VERIO=~1.0*TIV_VERIO_recon7
+   VERIO=~1.0*TIV_VERIO_cat
+   samseg=~1.0*TIV_SKYRA_samseg
+   samseg=~1.0*TIV_VERIO_samseg
+   recon6=~1.0*TIV_VERIO_recon6
+   recon7=~1.0*TIV_VERIO_recon7
+   recon7=~1.0*TIV_SKYRA_recon7
+   cat=~1.0*TIV_SKYRA_cat
+   cat=~1.0*TIV_VERIO_cat
+! residuals, variances and covariances
+   TIV_SKYRA_samseg ~~ obsvar*TIV_SKYRA_samseg
+   TIV_VERIO_samseg ~~ obsvar*TIV_VERIO_samseg
+   TIV_VERIO_recon6 ~~ obsvar*TIV_VERIO_recon6
+   TIV_VERIO_recon7 ~~ obsvar*TIV_VERIO_recon7
+   TIV_SKYRA_recon7 ~~ obsvar*TIV_SKYRA_recon7
+   TIV_SKYRA_cat ~~ obsvar*TIV_SKYRA_cat
+   TIV_VERIO_cat ~~ obsvar*TIV_VERIO_cat
+   truth ~~ truevar*truth
+   SKYRA ~~ SKYRAvar*SKYRA
+   VERIO ~~ VERIOvar*VERIO
+   samseg ~~ samsegvar*samseg
+   recon6 ~~ recon6var*recon6
+   recon7 ~~ recon7var*recon7
+   cat ~~ catvar*cat
+   truth ~~ 0.0*SKYRA
+   truth ~~ 0.0*VERIO
+   truth ~~ 0.0*samseg
+   truth ~~ 0.0*recon6
+   truth ~~ 0.0*recon7
+   truth ~~ 0.0*cat
+   SKYRA ~~ 0.0*VERIO
+   SKYRA ~~ 0.0*samseg
+   SKYRA ~~ 0.0*recon6
+   SKYRA ~~ 0.0*recon7
+   SKYRA ~~ 0.0*cat
+   VERIO ~~ 0.0*samseg
+   VERIO ~~ 0.0*recon6
+   VERIO ~~ 0.0*recon7
+   VERIO ~~ 0.0*cat
+   samseg ~~ 0.0*recon6
+   samseg ~~ 0.0*recon7
+   samseg ~~ 0.0*cat
+   recon6 ~~ 0.0*recon7
+   recon6 ~~ 0.0*cat
+   recon7 ~~ 0.0*cat
+! means
+   # the means are relative to samseg-SKYRA
+   SKYRA~0*1;
+   samseg~0*1;
+   VERIO~VERIOmean*1
+   recon6~recon6mean*1
+   recon7~recon7mean*1
+   cat~catmean*1
+   truth~truemean*1
+   TIV_SKYRA_samseg~0*1;
+   TIV_VERIO_samseg~0*1;
+   TIV_VERIO_recon6~0*1;
+   TIV_VERIO_recon7~0*1;
+   TIV_SKYRA_recon7~0*1;
+   TIV_SKYRA_cat~0*1;
+   TIV_VERIO_cat~0*1;
+'
+fit <- lavaan(model = model, data=df, fixed.x=FALSE, missing="FIML")
+```
