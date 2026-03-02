@@ -13,6 +13,14 @@ for name in ["", "_no_correction"]:
     # run harmonization and store the adjusted data
     model, data_adj = harmonizationLearn(volumes, covars, smooth_terms=['age'])
     np.savetxt("df_update" + name + '_adj.csv', data_adj, delimiter=",", fmt="%f", header="TIV, TGMV, TWMV, TCV, LVV, HCV, AV")
+# harmonize the scanner update WMHV data
+data = pd.read_csv('wmhv_update.csv')
+volumes = data.loc[:, ["WMHV_norm"]]
+volumes = np.array(volumes)
+covars = data.loc[:, ["SITE", "age", "gender"]]
+# run harmonization and store the adjusted data
+model, data_adj = harmonizationLearn(volumes, covars, smooth_terms=['age'], eb= False)
+np.savetxt("wmhv_update_adj.csv", data_adj, delimiter=",", fmt="%f", header="WMHV_norm")
 
 # switch working directory
 os.chdir("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/life/Data/")
@@ -23,7 +31,7 @@ for name in ["", "_wmhv" , "_no_correction", "_cross"]:
     if name != "_wmhv":
         bl_volumes = bl_data.loc[:,['TGMV', 'TCV', 'LVV', 'HCV', 'AV']]
     else:
-        bl_volumes = bl_data.loc[:, ['WMHV_asinh']]
+        bl_volumes = bl_data.loc[:, ['WMHV_norm']]
     # transform to numpy array
     bl_volumes = np.array(bl_volumes)
     # get bl covars
@@ -33,7 +41,7 @@ for name in ["", "_wmhv" , "_no_correction", "_cross"]:
     if name != "_wmhv":
         fu_volumes = fu_data.loc[:,['TGMV', 'TCV', 'LVV', 'HCV', 'AV']]
     else:
-        fu_volumes = fu_data.loc[:, ['WMHV_asinh']]
+        fu_volumes = fu_data.loc[:, ['WMHV_norm']]
     # transform to numpy array
     fu_volumes = np.array(fu_volumes)
     # get fu covars
@@ -45,10 +53,10 @@ for name in ["", "_wmhv" , "_no_correction", "_cross"]:
     # don't use empirical Bayes for WMHV
     if name == "_wmhv":
         bl_model, bl_data_adj = harmonizationLearn(bl_volumes, bl_covars, smooth_terms=['AGE'], eb= False, smooth_term_bounds=(age_min, age_max))
-        np.savetxt("df_life" + name + '_bl_adj.csv', bl_data_adj, delimiter=",", fmt="%f", header = "WMHV_asinh")
+        np.savetxt("df_life" + name + '_bl_adj.csv', bl_data_adj, delimiter=",", fmt="%f", header = "WMHV_norm")
         # adjust values using bl model
         fu_data_adj = harmonizationApply(fu_volumes, fu_covars, bl_model)
-        np.savetxt("df_life" + name + '_fu_adj.csv', fu_data_adj, delimiter=",", fmt="%f", header = "WMHV_asinh")
+        np.savetxt("df_life" + name + '_fu_adj.csv', fu_data_adj, delimiter=",", fmt="%f", header = "WMHV_norm")
     else:
         bl_model, bl_data_adj = harmonizationLearn(bl_volumes, bl_covars, smooth_terms=['AGE'], smooth_term_bounds=(age_min, age_max))
         np.savetxt("df_life" + name + '_bl_adj.csv', bl_data_adj, delimiter=",", fmt="%f", header="TGMV, TCV, LVV, HCV, AV")

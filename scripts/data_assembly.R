@@ -3,7 +3,7 @@
 # load required packages
 library(tidyverse)
 library(lavaan)
-
+library(bestNormalize)
 ## we start with the data of the scanner update dataset
 ## we will ave to load the data and harmonize column names to get everything into one dataset
 ## first we load the samseg data
@@ -179,6 +179,10 @@ df_update[,c("TGMV", "TWMV", "TCV")] <- df_update[,c("TGMV", "TWMV", "TCV")]/100
 df_update[,"LVV"] <- df_update[,"LVV"]/10000 # mm^3 to 10 cm^3
 df_update[,c("HCV", "AV")] <- df_update[,c("HCV", "AV")]/1000 # mm^3 to cm^3
 
+# LVV is not approx. normally distributed
+bn <- bestNormalize(df_update$LVV, allow_orderNorm = F, standardize = F) # non-Standardized Yeo-Johnson Transformation with lambda = -1.480012
+df_update$LVV <- bn$x.t
+
 # produce a df without participants whose scans have been manually edited
 df_update_no_correction <- df_update[df_update$correction.necessary == 0,]
 
@@ -186,7 +190,25 @@ df_update_no_correction <- df_update[df_update$correction.necessary == 0,]
 write.csv(df_update, file = "/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update.csv")
 write.csv(df_update_no_correction, file = "/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update_no_correction.csv")
 
-## now we can load the segmented LIFE data
+# now we prepare the scanner update WML data
+
+# load segmented data
+wmhv_update <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/wmhv/results_summary.csv")
+# create id, scanner and segmentation col
+wmhv_update$id <- wmhv_update$participant
+wmhv_update$SITE <-  ifelse(grepl("skyra", wmhv_update$scanner), "SKYRA", "VERIO")
+bn <- bestNormalize(c(wmhv_update[wmhv_update$SITE== "SKYRA", "Lesions"], wmhv_update[wmhv_update$SITE== "VERIO", "Lesions"]), , allow_orderNorm = F, standardize = F)
+# uses Non-Standardized Log_b(x + a) with a = 0 and b = 10
+wmhv_update[wmhv_update$SITE== "SKYRA", "WMHV_norm"] <- bn$x.t[1:length(wmhv_update[wmhv_update$SITE== "SKYRA", "Lesions"])]
+wmhv_update[wmhv_update$SITE == "VERIO", "WMHV_norm"] <- bn$x.t[(1+length(wmhv_update[wmhv_update$SITE== "SKYRA", "Lesions"])):length(bn$x.t)]
+
+# merge with df_update for age and gender
+wmhv_update <- merge(wmhv_update, df_update[!duplicated(df_update$id),c("id", "age", "gender")], by = "id", all.x = T)
+
+# save df for harmonization
+write.csv(wmhv_update, file = "/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update.csv")
+
+######################## now we can load the segmented LIFE data ############################
 # we start with the samseg data (both long and cross pipeline)
 samseg_life <- read.csv("/data/pt_life_freesurfer/samseg/results_summary.csv")
 samseg_cross_life <- read.csv("/data/pt_life_freesurfer/samseg/results_cross_summary.csv")
@@ -250,17 +272,13 @@ samseg_cross_life <- samseg_cross_life %>%
     "id" = "participant",
     "WMHV" = "Lesions"
   )
-samseg_life$WMHV_asinh <- asinh(samseg_life$WMHV)
-samseg_cross_life$WMHV_asinh <- asinh(samseg_cross_life$WMHV)
 # now we continue with the LST WMHV data
 lst_life <- read.csv("/data/pt_life_whm/Results/Tables/Datatable_for_LIFE/qa_info_LIFE_WMH_LST.csv")
-lst_life$vol_long_bl_asinh <- asinh(lst_life$vol_long_bl)
-lst_life$vol_long_fu_asinh <- asinh(lst_life$vol_long_fu)
-lst_life <- lst_life[,c("pseudonym", "qa_LST_fu", "vol_long_bl_asinh", "vol_long_fu_asinh")] %>%
+lst_life <- lst_life[,c("pseudonym", "qa_LST_fu", "vol_long_bl", "vol_long_fu")] %>%
   pivot_longer(
-    cols = c(vol_long_bl_asinh, vol_long_fu_asinh),
+    cols = c(vol_long_bl, vol_long_fu),
     names_to = "timepoint",
-    values_to = "WMHV_asinh",
+    values_to = "WMHV",
     values_drop_na = TRUE
   )
 lst_life$timepoint <- ifelse(grepl("fu", lst_life$timepoint), "FU", "BL")
@@ -269,6 +287,7 @@ lst_life <- lst_life %>%
   rename(
     "id" = "pseudonym")
 lst_life$wmhv_usable <- ifelse(lst_life$qa_LST_fu != 0, 0, 1)
+
 # now we load the FS v 5.3.0 segmentations of the LIFE data (long and cross piepline)
 recon5_life <- read.delim("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/life/Data/aseg530_stats.txt")
 recon5_cross_life <- read.delim("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/life/Data/aseg530_cross_stats.txt")
@@ -336,10 +355,11 @@ samseg_life$age_squared <- samseg_life$AGE^2
 # now we merge the Life dataframes
 relevant_cols <- c("id", "segmentation", "timepoint", "TGMV", "TCV", "LVV", "HCV", "AV")
 df_life <- bind_rows(samseg_life[,c(relevant_cols, "AGE", "GENDER", "age_squared")], recon5_life[,relevant_cols], samseg_cross_life[,relevant_cols], recon5_cross_life[,relevant_cols])
-df_life_wmhv <- bind_rows(samseg_life[,c("id", "segmentation", "timepoint", "WMHV_asinh", "AGE", "GENDER", "age_squared")], lst_life[,c("id", "segmentation", "timepoint", "WMHV_asinh", "wmhv_usable")])
+df_life_wmhv <- bind_rows(samseg_life[,c("id", "segmentation", "timepoint", "WMHV", "AGE", "GENDER", "age_squared")], lst_life[,c("id", "segmentation", "timepoint", "WMHV", "wmhv_usable")])
 df_life <- merge(df_life, QC[,c("id", "corrected", "usable", "timepoint")], by = c("id", "timepoint"), all.x = T)
 df_life <- merge(df_life, QA_LIFE[,c("radiology_usable", "id", "timepoint")], by = c("id", "timepoint"),  all.x = T)
 # copy lst quality judgement to samseg, copy samseg age and gender to lst
+# only keep those that have both samseg and lst
 df_life_wmhv <- df_life_wmhv %>%
   group_by(id, timepoint) %>%
   mutate(
@@ -348,8 +368,10 @@ df_life_wmhv <- df_life_wmhv %>%
     age_squared = age_squared[segmentation == "samseg"][1],
     GENDER = GENDER[segmentation == "samseg"][1]
   ) %>%
+  filter(n() == 2) %>%
   ungroup()
 # copy samseg age and gender to recon
+# only keep those that have both samseg and recon
 df_life <- df_life %>%
   group_by(id, timepoint) %>%
   mutate(
@@ -357,6 +379,7 @@ df_life <- df_life %>%
     GENDER = GENDER[segmentation == "samseg"][1],
     age_squared = age_squared[segmentation == "samseg"][1]
   ) %>%
+  filter(all(c("samseg", "recon5") %in% segmentation)) %>%
   ungroup()
 # apply exclusion criteria
 df_life <- df_life[df_life$usable == 1 & df_life$radiology_usable == 1,]
@@ -380,6 +403,16 @@ df_life_wmhv <- df_life_wmhv[!is.na(df_life_wmhv$AGE) & !is.na(df_life_wmhv$GEND
 df_life[,c("TGMV", "TCV")] <- df_life[,c("TGMV", "TCV")]/100000 # mm^3 to 100 cm^3
 df_life[,"LVV"] <- df_life[,"LVV"]/10000 # mm^3 to 10 cm^3
 df_life[,c("HCV", "AV")] <- df_life[,c("HCV", "AV")]/1000 # mm^3 to cm^3
+
+# LVV is not approx normally distributed
+bn <- bestNormalize(df_life$LVV, allow_orderNorm = F, standardize = F)
+# uses Non-Standardized Yeo-Johnson Transformation with lambda = 0.1731618 
+df_life$LVV <- bn$x.t
+
+# WMHV is not approx normally distributed
+bn <- bestNormalize(df_life_wmhv$WMHV, allow_orderNorm = F, standardize = F)
+# uses Non-Standardized Box Cox Transformation with lambda = -0.4430144  
+df_life_wmhv$WMHV_norm <- bn$x.t
 
 # remove empty row
 df_life <- df_life[complete.cases(df_life),]
@@ -412,7 +445,7 @@ df_life_wide <- pivot_wider(df_life[!grepl("cross", df_life$SITE),],
             id_cols = id)
 df_life_wmhv_wide <- pivot_wider(df_life_wmhv,
                             names_from = c(SITE, timepoint),
-                            values_from = c(WMHV_asinh),
+                            values_from = c(WMHV_norm),
                             id_cols = id) 
 
 # within each segmentation, calculate the difference from BL to FU
@@ -448,7 +481,7 @@ df_life_wide <- df_life_wide %>%
              names_to = c("variable", "SITE"), 
              names_sep = "_",                    
              values_to = "value") %>%
-  select(id, variable, SITE, value) %>%
+  dplyr::select(id, variable, SITE, value) %>%
   pivot_wider(
     names_from = "variable",  # each variable becomes a column
     values_from = "value"
@@ -458,7 +491,7 @@ df_life_wmhv_wide <- df_life_wmhv_wide %>%
                names_to = c("variable", "SITE"), 
                names_sep = "_",                    
                values_to = "value") %>%
-  select(id, variable, SITE, value) %>%
+  dplyr::select(id, variable, SITE, value) %>%
   pivot_wider(
     names_from = "variable",  # each variable becomes a column
     values_from = "value"
