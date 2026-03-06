@@ -176,12 +176,10 @@ df_update$gender <- ifelse(df_update$gender == "w", 0, 1)
 # transform to desired units
 df_update[,"TIV"] <- df_update[,"TIV"]/1000000 # mm^3 to dm^3
 df_update[,c("TGMV", "TWMV", "TCV")] <- df_update[,c("TGMV", "TWMV", "TCV")]/100000 # mm^3 to 100 cm^3
-df_update[,"LVV"] <- df_update[,"LVV"]/10000 # mm^3 to 10 cm^3
 df_update[,c("HCV", "AV")] <- df_update[,c("HCV", "AV")]/1000 # mm^3 to cm^3
 
 # LVV is not approx. normally distributed
-bn <- bestNormalize(df_update$LVV, allow_orderNorm = F, standardize = F) # non-Standardized Yeo-Johnson Transformation with lambda = -1.480012
-df_update$LVV <- bn$x.t
+df_update$LVV <- asinh(df_update$LVV)
 
 # produce a df without participants whose scans have been manually edited
 df_update_no_correction <- df_update[df_update$correction.necessary == 0,]
@@ -405,9 +403,7 @@ df_life[,"LVV"] <- df_life[,"LVV"]/10000 # mm^3 to 10 cm^3
 df_life[,c("HCV", "AV")] <- df_life[,c("HCV", "AV")]/1000 # mm^3 to cm^3
 
 # LVV is not approx normally distributed
-bn <- bestNormalize(df_life$LVV, allow_orderNorm = F, standardize = F)
-# uses Non-Standardized Yeo-Johnson Transformation with lambda = 0.1731618 
-df_life$LVV <- bn$x.t
+df_life$LVV <- asinh(df_life$LVV)
 
 # WMHV is not approx normally distributed
 bn <- bestNormalize(df_life_wmhv$WMHV, allow_orderNorm = F, standardize = F)

@@ -2,7 +2,9 @@ library(tidyverse)
 library(MetBrewer)
 library(patchwork)
 
-colors = met.brewer(name="Tam", n=8, type="discrete")
+
+colors = met.brewer(name="Java", n=5, type="discrete")
+colors <- colors[c(1,2,4,5)]
 ############ Section 1: The scanner update dataset #######################
 setwd("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/")
 # load the unadjusted data from the scanner update study 
@@ -64,14 +66,18 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
       arrange(mean_val) %>%
       pull(id)
     df$id <- factor(df$id, levels = ordered_ids)
-    plt <- ggplot(data = df, aes(x = factor(id), y = .data[[outcome]], color = SITE, group = SITE)) +
-      geom_point() +
+    plt <- ggplot(data = df, aes(x = factor(id), y = .data[[outcome]], color = SITE, group = SITE, shape = SITE)) +
+      geom_point(size = 2.25, alpha = 0.9, stroke = 0.8) +
+      scale_shape_manual(values = c(16, 6, 16, 6, 16, 6, 16, 6)) +
       theme_classic() +
-      guides(color = guide_legend(ncol = 2)) +
+      guides(color = guide_legend(ncol = 2, override.aes = list(size = 4)), shape = guide_legend(ncol = 2)) +
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), 
-            legend.text = element_text(size = 14), legend.title = element_text(size = 16)) +
+            legend.text = element_text(size = 15), legend.title = element_text(size = 17)) +
       ylab(y_axis_title) +
-      scale_color_manual(values = colors)
+      scale_color_manual(values = rep(colors, each = 2))
+    if (grepl("adj", name)){
+      plt <- plt + theme(axis.text.y  = element_blank(), axis.ticks.y = element_blank())
+    }
     plots[[paste0(outcome, suffix)]] <- plt
   }
   y_range <- range(c(plots[[outcome]]$data[[outcome]], plots[[paste0(outcome, "_adj")]]$data[[outcome]]), na.rm = TRUE)
@@ -83,7 +89,8 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
 legend_only_plot <- ggplot() + 
   theme_void() +
   annotation_custom(cowplot::get_legend(comparisons[[1]]))
-combined <- comparisons[[6]] + comparisons[[1]] + comparisons[[2]] + comparisons[[3]] + comparisons[[4]] + comparisons[[5]] + comparisons[[7]] + legend_only_plot +
-  plot_layout(nrow = 3, guides = "collect") &
-  theme(legend.position = "none")
+combined <- wrap_plots(comparisons[[6]], comparisons[[1]], comparisons[[2]], comparisons[[3]], comparisons[[4]], comparisons[[5]], comparisons[[7]], legend_only_plot, 
+  nrow = 4, ncol = 2, guides = "collect") + plot_layout(widths = 1) &
+  theme(legend.position = "none", plot.margin = margin(10, 5, 10, 5))
+combined
 ggsave("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/Results/update_comparison_plot.pdf", plot = combined, width = 15, height = 8, units = "in")
