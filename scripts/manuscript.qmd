@@ -19,29 +19,31 @@ editor:
 
 # Introduction
 
-In the pursuit of a deeper understanding of the causes, correlates and trajectories of brain structure and function ever greater samples are required[@poldrack_brain_2016].
-Hence, numerous multicentre neuroimaging studies have been conducted to facilitate the recruitment and scanning of more participants[@van_horn_multisite_2009].
-Even larger sample sizes can be attained by conducting integrative data analyses (IDA) in which data from multiple studies are pooled[@curran_integrative_2009].
-For example, Bethlehem et al. recently aggregated over 100,000 brain MRIs to develop brain charts across the human lifespan[@bethlehem_brain_2022].
+In the pursuit of a deeper understanding of the causes, correlates and trajectories of brain structure and function ever greater samples are required [@poldrack_brain_2016].
+Larger and more representative samples are needed to mitigate concerns of insufficient power [@button_power_2013], enhance the precision and reliability of our estimates [@cremers_relation_2017; @grady_influence_2021] and increase generalizability [@lewinn_sample_2017; @marek_replicability_2025].
+Hence, numerous multicentre neuroimaging studies have been conducted to facilitate the recruitment and scanning of more participants [@van_horn_multisite_2009].
+Even larger sample sizes can be attained by conducting integrative data analyses (IDA) in which data from multiple studies are pooled [@curran_integrative_2009].
+For example, Bethlehem et al. recently aggregated over 100,000 brain MRIs to develop brain charts across the human lifespan [@bethlehem_brain_2022].
 
 A central challenge in multicentre studies is that images acquired on different scanners differ systematically[@medawar_estimating_2021].
-To confront this concern, several data-harmonization approaches have been established.
+To address this concern, several data-harmonization approaches have been established.
 Many rely on *travelling brains*, i.e. participants that undergo imaging on multiple scanners [@maikusa_comparison_2021; @yamashita_harmonization_2019; @tian_deep_2022].
-However, this is a logistical challenge for any study and impossible when datasets are integrated post-hoc.
+However, this is a resource-intensive logistical challenge for any study and impossible when datasets are integrated post-hoc.
 
-Therefore, ComBat, a method originally developed in molecular biology, that does not require travelling participants, has been applied widely [@fortin_harmonization_2018].
+Therefore, ComBat, a method to remove additive and multiplicative batch effects of different scanners, which does not require travelling participants, has been applied widely [@fortin_harmonization_2018].
 For example, all researchers using data of the ENIGMA consortium have been advised to employ it[@radua_increased_2020].
 Multiple investigations concluded that ComBat successfully harmonizes data from multiple scanners while preserving the results of meaningful differences like distinct age and gender compositions of samples[@tassi_assessment_2024; @sun_comparison_2022; @eshaghzadeh_torbati_multi-scanner_2021].
 Ongoing developments have further advanced the method to handle longitudinal data and to model nonlinear relationships more flexibly[@pomponio_harmonization_2020; @beer_longitudinal_2020].
 
 Although these assessments are very promising, they lack a ground truth against which ComBat's performance could be evaluated.
-Instead, quality was appraised based on ComBat's ability to detect significant case-control differences[@sun_comparison_2022] or the significance of age effects on cortical thickness[@beer_longitudinal_2020; @fortin_harmonization_2018].
+Instead, quality was appraised based on ComBat's ability to detect significant differences between cases and controls [@sun_comparison_2022; @radua_increased_2020] or the significance of expected age differences in cortical thickness[@beer_longitudinal_2020; @fortin_harmonization_2018].
 Measurements of the same participant from multiple sites in close temporal proximity would provide a ground truth.
 They should agree perfectly within the limits of measurement error if no systematic differences are present.
 Yet, to our knowledge, only one study has thus far examined ComBat's performance in a sample of 16 individuals scanned on two scanners a few months apart[@eshaghzadeh_torbati_multi-scanner_2021].
 
 Moreover, if cerebral measurements pooled in an IDA have been derived using different segmentation algorithms, an additional complication arises.
 Volumetrics estimated using different software exhibit even larger discrepancies than those derived using the same software on different scanners[@burkle_scan-rescan_2025].
+Just using cross-sectional or longitudinal segmentation pipelines of the same software version can produce meaningful differences [@vidal-pineiro_reliability_2025].
 
 Therefore, we investigate whether ComBat successfully harmonizes derivatives with compounded scanner and software heterogeneity in a large travelling brain dataset.
 Moreover, we provide the first independent evaluation of the performance of ComBat in longitudinal neuroimaging data and its application to white matter hyperintensity volume.
@@ -66,11 +68,12 @@ life_age_gender <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergenerat
 
 ## Samples
 
-To test ComBat’s performance in case of compounded scanner and segmentation software effects, we used the scanner-update dataset by Medawar et al. [@medawar_estimating_2021].
-This sample consists of 121 healthy participants (median age = 28 years, range = 19–54 years; 61 women) that were scanned on two different 3 Tesla MRI scanners.
+To test ComBat’s performance in case of compounded scanner and segmentation software effects, we used the scanner-update dataset by Medawar et al.
+The data were originally collected to study the effects of a scanner update between waves of a longitudinal study [@medawar_estimating_2021].
+This sample consists of 121 healthy participants (median age = 28 years, range = 1954 years; 61 women) that were each scanned on two different 3 Tesla MRI scanners.
 The time between sessions ranged from 0.5 to 18 weeks (median = 7.7 weeks).\
 Additionally, we used data from the longitudinal LIFE-Adult neuroimaging sample[@engel_cohort_2023] to evaluate the performance of ComBat in longitudinal data.
-At baseline, \~2600 participants underwent MR imaging (median age = `{r} round(median(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years, range = `{r} round(min(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)`-`{r} round(max(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years; `{r} round(mean(life_age_gender[life_age_gender$timepoint == "BL", "GENDER"], na.rm = T), digits = 2)*100`% women) of which \~1600 returned for follow-up imaging after \~6 years.
+At baseline, \~2600 participants underwent MR imaging (median age = `{r} round(median(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years, range = `{r} round(min(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)`--`{r} round(max(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years; `{r} round(mean(life_age_gender[life_age_gender$timepoint == "BL", "GENDER"], na.rm = T), digits = 2)*100`% women) of which \~1600 returned for follow-up imaging after \~6 years.
 Both studies were approved by the ethics committee of the Faculty of Medicine at the University of Leipzig and all participants gave written informed consent according to the Declaration of Helsinki.
 
 ## Neuroimaging
@@ -84,7 +87,7 @@ Detailed acquisition parameters have been reported previously[@medawar_estimatin
 ## Segmentation
 
 We aimed to reuse existing data to minimise research waste and analyse segmentations that provide an overview of widely applied methods with a varying degree of similarity.
-In addition to the original FreeSurfer version 6.0.0p1 longitudinal recon-all pipeline employed by Medawar et al., we segmented the MRIs using FreeSurfer 7.4.0 recon-all (cross-sectional), FreeSurfer 7.4.0 samseg (cross-sectional), and SPM 12.7771 CAT-12.9 (cross-sectional).
+In addition to the original FreeSurfer version 6.0.0p1 longitudinal recon-all pipeline [@reuter_within-subject_2012] employed by Medawar et al., we segmented the MRIs using FreeSurfer 7.4.0 recon-all (cross-sectional) [@fischl_whole_2002], FreeSurfer 7.4.0 samseg (cross-sectional) [@cerri_open-source_2023], and SPM 12.7771 CAT-12.9 (cross-sectional) [@gaser_cat_2024].
 These four pipelines across two scanners resulted in eight batches of scanner-segmentation combinations.
 All processing was performed with default settings on T1-weighted images.
 For an exploratory analysis of the harmonizability of white matter hyperintensity volume (WMHV) from different scanners, we additionally used FLAIR images as inputs to FreeSurfer's version 7.4.0 cross-sectional samseg.\
@@ -104,13 +107,13 @@ We derived volumetric measures of the following regions of interest (ROIs):
 
 -   Total cortical volume (TCV) - unit: $100 cm^3$
 
--   Lateral ventricle volume (LVV) - unit: transformed
+-   Lateral ventricle volume (LVV) - unit: $asinh(mm^3)$
 
 -   Hippocampal volume (HCV) - unit: $cm^3$
 
 -   Amygdala volume (AV) - unit: $cm^3$
 
--   White matter hyperintensity volume (WMHV) - unit: transformed
+-   White matter hyperintensity volume (WMHV) - unit: $log_{10}$($mm^3$)
 
 We summed all bilateral measures over both hemispheres.
 Further details on the derivation of composite volumes are available in the [preregistration](https://osf.io/7dcuh/overview).
@@ -121,11 +124,22 @@ Additionally, TWMV is not available in FreeSurfer's version 5.3.0 segmentation.
 
 ## Harmonization
 
-We harmonized the scanner-update data using ComBat as implemented in neuroHarmonize[@pomponio_harmonization_2020] with gender as a categorical and age as a smooth covariate.
-In the LIFE-Adult study, we used both longitudinal ComBat[@beer_longitudinal_2020] with age and gender as linear covariates and neuroHarmonize with the same covariates as above.
-As suggested by the authors of neuroHarmonize, we first trained the model on our baseline data and then also applied it to follow-up observations.
+ComBat is a harmonization method developed to remove additive and multiplicative batch effects while preserving the effects of meaningful biological covariates in microarray expression data [@johnson_adjusting_2007].
+Observed data are adjusted as:
+
+$$
+Y^*_{ijg} = \frac{Y_{ijg} - \hat{\alpha_g} - X\hat{\beta_g} - \hat{\gamma_{jg}}}{\hat{\delta_{jg}}} + X\hat{\beta_g} - \hat{\gamma_{jg}}
+$$ $Y^*_{ijg}$ are the adjusted values for gene g of sample i in batch j.
+$\hat{\alpha_g}$ (the grand mean), $\hat{\beta_g}$ (the regression coefficients of biological covariates), $\hat{\gamma_{ig}}$ (the additive effect of a batch on a gene) and $\hat{\delta_{ig}}$ (the multiplicative effect of a batch on a gene) are estimated from the data.
+$X$ is the matrix of covariate values.
+
+The method was later adopted to harmonize neuroimaging data from different scanners  [@fortin_harmonization_2018].
+We harmonized the scanner-update data using ComBat as implemented in `neuroHarmonize` [@pomponio_harmonization_2020] with gender as a dichotomous covariate and a smooth function for continuous age values.
+In the LIFE-Adult study, we used both `longComBat()` [@beer_longitudinal_2020] with age and gender as linear covariates and `neuroHarmonize()` with the same covariates as above.
+As suggested by the authors of `neuroHarmonize`, we first trained the model on our baseline data and then also applied it to follow-up observations [@pomponio_neuroharmonize_2024].
+The observations in the batches of each dataset came from the same participants.
+As ComBat is intended to work when there is no overlap sample, we intentionally did not model this dependency between observations in the different batches.
 In an exploratory analysis of the LIFE-Adult data, we used both methods to harmonize change scores rather than the observed values.
-The shared participant identity of observations across batches was not modelled.
 
 ## Exclusion criteria, sampling weights and imputation
 
@@ -134,15 +148,18 @@ For LIFE-Adult, we included all participants with available segmentations if the
 For WMHV values, we excluded participants whose scans had been flagged in visual quality control.
 This included motion-artifacts, ventricular expansion which led to regression of lesion voxels, or brain pathologies such as stroke or congenital lesions.
 We did not exclude outliers, use sampling weights or imputed missing data.
-In structural equation models (SEMs), we used full information maximum likelihood.
+In structural equation models (SEMs), we used full information maximum likelihood estimation, which allows to account for missing data under the assumption of missingness at random.
 
 ## Transformations
 
 LVV and WMHV were not normally distributed.
 The former could be transformed with an inverse hyperbolic sine transformation.
-This was not successful for WMHV.
-Therefore, we used the bestnormalize function to perform the optimal non-standardizing transformation excluding the ordered quantile technique.
+A visual inspection showed that this was not successful for WMHV.
+Therefore, we used `bestnormalize()` [@peterson_finding_2021] to identify the optimal non-standardizing transformation excluding the ordered quantile technique.
 This was a Box-Cox transformation with lambda = -0.44 in LIFE-Adult and the decadic logarithm in the scanner-update data.
+We provide raincloud plots of the distributions in \[add figure\].
+
+\[TO DO: Raincloud plots per ROI pre/post transformation if applicable\]
 
 ## Analyses
 
@@ -154,7 +171,13 @@ Hence, we made inferences on the agreement on change scores calculated before an
 ### Intraclass correlation coefficients
 
 We calculated intraclass correlation coefficients (ICCs) for each ROI using the absolute agreement two-way random-effects model without averaging across raters.
+Absolute agreement rather than consistency is warranted because measurements from different batches should be approximately equal and not just proportional to one another.
+Averaging across raters is adequate if multiple measurements of the same participant (at the same timepoint) are available.
+This is not the case in real data and would thus produce biased results if employed here.
+We used the two-way random effects model as we assumed that participants, scanners and segmentations were drawn at random from underlying larger distributions.
 This allows us to generalize the results to other scanner-segmentation combinations than the ones present in this study[@mcgraw_forming_1996].
+As all ICC models, the model assumes that each scanner and segmentation contributes a different offset to the true value while the remaining noise is identical.
+Whether interactions between batches are modelled or not is inconsequential to the obtained ICC value [@liljequist_intraclass_2019].
 Classical ICC calculations assume independent batches.
 This is violated in the scanner-update dataset when batches share scanners or segmentations.
 We accounted for this by estimating separate random effects for scanner and segmentation.
@@ -172,45 +195,48 @@ segmentation \sim \mathcal{N}(0, \sigma^2_{segmentation}), \quad
 \end{aligned}
 $$
 
-For each ROI, we estimated an overall intercept $\beta_0$ and three random intercepts (individual, scanner and segmentation) and an error term with lmer from lme4.
+For each ROI, we estimated an overall intercept $\beta_0$ and three random intercepts (individual, scanner and segmentation) and an error term with `lmer()` from `lme4` [@bates_fitting_2015].
 Then we calculated the ICC as:
 
 $$
 ICC = \frac{\sigma^2_{id}}{\sigma^2_{id} + \sigma^2_{scanner} + \sigma^2_{segmentation} + \sigma^2_{\varepsilon}}
 $$
 
-We derived confidence intervals by bootstrapping 1000 times.
-For the LIFE-Adult dataset we followed the same procedure but did not have to model scanner as an additional effect.
+We derived confidence intervals by 1000 parametric bootstraps using `bootMer()` on the fitted model.
+For the LIFE-Adult dataset we followed the same procedure but only included the segmentation random effect as the scanner was identical.
 
 ### Percent differences
 
 We calculated the percent difference (PD) to quantify the size and direction of the difference between batches for each ROI j across n participants according to:
 
 $$
-PD_j = 100 * \frac{2}{n} \sum_{i=1}^{n} \frac{V_{ij} - S_{ij}}{|V_{ij}| + |S_{ij}|}
+PD_g = 100 * \frac{2}{n} \sum_{i=1}^{n} \frac{V_{ig} - S_{ig}}{|V_{ig}| + |S_{ig}|}
 $$
 
-where $V_{ij}$ and $S_{ij}$ are the volumes of participant i in two different batches.
+where $V_{ig}$ and $S_{ig}$ are the volumes of ROI g of participant i in two different batches.
+As the differences are scaled per individual, the same absolute difference will lead to a larger percent difference in individuals with smaller volumes across batches.
 Absolute value bars are necessary to avoid that changes of a different sign cancel each other out.
 
 ### Significance tests
 
-To test for significant differences, we calculated repeated-measures two-sided ANOVAs for the scanner-update dataset and two-sided paired t-tests for the LIFE-Adult data.
-The ANOVAs were followed up with pairwise two-sided paired t-tests with Hommel correction.
+To test for significant differences, we calculated repeated-measures two-tailed ANOVAs for the scanner-update dataset and two-tailed paired t-tests for the LIFE-Adult data.
+The ANOVAs were followed up with pairwise two-tailed paired t-tests with Hommel correction.
 
 ### Intraclass effect decomposition
 
-Brandmaier et al. have introduced intraclass effect decomposition (ICED) which uses structural equation modelling (SEM) to discern individual sources of variation[@brandmaier_assessing_2018].
+Brandmaier et al. have introduced intraclass effect decomposition (ICED).
+ICED is based on Generalizability Theory [@cronbach_dependability_1972] and uses structural equation modelling (SEM) to discern individual sources of variation[@brandmaier_assessing_2018].
 This approach allowed us to identify the contributions of individual differences, scanners, segmentations and measurement error to the variance in the scanner-update dataset.
-We modelled a SEM in which all eight observed variables indicated one *true* latent variable.
-Additionally, all observed variables from one scanner indicated this scanner's latent variable (two latent scanner variables) and all from one segmentation indicated the corresponding segmentation's latent variable (four latent segmentation variables).
-We modelled all observations to have one error term with a shared variance.
+We specified a SEM with eight observed variables corresponding to each unique scanner-segmentation combination.
+We assumed that they all measured one common latent variable representing the true effect of interest.
+In addition, we added latent variables representing common method variance of those observed variables that came from the same scanner and those that used the same segmentation approach.
+In addition, we assumed homoscedastic residual error variances across all observations.
 All variances were orthogonal to one another.
 We constrained all factor loadings to 1 and estimated a mean for the *truth*, the second scanner and the second to fourth segmentation latent variables.
 The ICED-ICC for each scanner-segmentation combination was calculated as:
 
 $$
-ICC = \frac{\sigma^2_{truth}}{\sigma^2_{truth} + \sigma^2_{scanner} + \sigma^2_{segmentation} + \sigma^2_{\varepsilon}}
+ICC_{jk} = \frac{\sigma^2_{truth}}{\sigma^2_{truth} + \sigma^2_{scanner_j} + \sigma^2_{segmentation_k} + \sigma^2_{\varepsilon}}
 $$
 
 If a variance estimate was negative with a standard error larger than its distance to 0, we set it to 0 for the ICC calculation.
@@ -222,7 +248,8 @@ Moreover, we considered a PD \< 2% and a p-value \>= 5% to be negligible.
 
 ## Statistical Power
 
-A priori power analyses indicated that we had \>99% power to detect small effects (d = 0.2 / $\eta^2$ = 0.01) for all our samples.
+We conducted a priori power analyses using `power.t.student()` and `power.f.mixed.anova()` from `pwrss` [@bulus_pwrss_2025] as described in our [preregistration](https://osf.io/7dcuh/overview).
+The results indicated that we had \>99% power to detect small effects (d = 0.2 / $\eta^2$ = 0.01) for all our samples.
 
 ## Sensitivity analyses
 
@@ -298,18 +325,19 @@ Prior to harmonization, ICCs varied widely across ROIs (range: `r round(min(upda
 ANOVAs returned statistically significant batch differences for all volumes.
 Likewise, average percent differences in batch comparisons exceeded 2% in all ROIs.
 Differences between segmentations were greater than those between scanners (see @tbl-between-within).\
-After harmonization, ICCs improved substantially (range: `r round(min(update_lme_icc_res_no_wmhv$ICC_adj), digits = 2)` - `r round(max(update_lme_icc_res_no_wmhv$ICC_adj), digits = 2)`, see @tbl-update-icc) and ANOVAs revealed no statistically significant differences.
+After harmonization, ICCs improved substantially (range: `r round(min(update_lme_icc_res_no_wmhv$ICC_adj), digits = 2)` - `r round(max(update_lme_icc_res_no_wmhv$ICC_adj), digits = 2)`, see @tbl-update-icc) and there were no significant differences between the mean volumetric estimates across ROIs.
 Likewise, no pairwise comparison of two batches was significant after harmonization (see @tbl-update-signif).
 The highest average percent difference was `r pd_sub2[which.max(pd_sub2$mean_pd_post), "ROI"]` with `r round(pd_sub2[which.max(pd_sub2$mean_pd_post), "mean_pd_post"], digits = 2)`% (see @tbl-update-pd).\
 The ICED analyses produced ICCs \> 0.75 for all scanner-segmentation combinations across all ROIs.
-However, this SEM-based metric was largely unaltered after harmonization Neither scanner showed markedly higher reliability (see @tbl-iced-icc).\
+Neither scanner showed markedly higher reliability.
+This SEM-based metric was largely unaltered after harmonization (see @tbl-iced-icc).\
 ComBat did not shift variances.
 However, scanner and segmentation means were all close to 0 afterwards indicating the reduction of systematic batch differences (see @tbl-iced-variances and @tbl-iced-means).\
 @fig-update to @fig-update4 illustrate the distribution of measurements in the batches before and after harmonization.
 
 ```{r}
 #| label: tbl-update-icc
-#| tbl-cap: "ICCs before and after harmonization"
+#| tbl-cap: "ICCs before and after harmonization in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -355,7 +383,7 @@ df2[, c("ROI", "ICC_CI", "ICC_adj_CI")] |>
 
 ```{r}
 #| label: tbl-update-signif
-#| tbl-cap: "Statistical significance of differences before and after harmonization"
+#| tbl-cap: "Statistical significance of differences before and after harmonization in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -393,7 +421,7 @@ anovas[, c("ROI", "p", "p_adj", "n_sig_pre", "n_sig_post")] |>
 
 ```{r}
 #| label: tbl-update-pd
-#| tbl-cap: "Percent differences before and after harmonization"
+#| tbl-cap: "Percent differences before and after harmonization in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -430,7 +458,7 @@ pd_sub2 |>
 
 ```{r}
 #| label: fig-update
-#| fig-cap: "Distribution of measurements by batch before and after harmonization. \\newline TIV = Total Intracranial Volume; TGMV = Total Grey Matter Volume"
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in scanner-update data \\newline TIV = Total Intracranial Volume; TGMV = Total Grey Matter Volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -515,13 +543,13 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
     df$id <- factor(df$id, levels = ordered_ids)
     plt <- ggplot(data = df, aes(x = factor(id), y = .data[[outcome]], color = SITE, group = SITE, shape = SITE)) +
       geom_point(size = 0.75, alpha = 0.85, stroke = 0.4) +
-      scale_shape_manual(values = c(16, 6, 16, 6, 16, 6, 16, 6)) +
+      scale_shape_manual(values = c(16, 1, 16, 1, 16, 1, 16, 1)) +
       theme_classic(base_family = "Charter") +
       guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) + 
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
             axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
             legend.spacing.y = unit(0.1, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
-      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.3, "cm"), legend.key.spacing.y = unit(0, "cm"), legend.key.spacing.x = unit(0, "cm"), 
+      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.5, "cm"), legend.key.spacing.y = unit(0, "cm"), legend.key.spacing.x = unit(0, "cm"), 
       axis.line.x = element_line(linewidth = 0.3), axis.line.y = element_line(linewidth = 0.3)) +
       ylab(y_axis_title) + scale_color_manual(values = rep(colors, each = 2))
     if (grepl("adj", name)){
@@ -582,7 +610,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 
 ```{r}
 #| label: fig-update2
-#| fig-cap: "Distribution of measurements by batch before and after harmonization. \\newline TWMV = Total White Matter Volume; TCV = Total Cortical Volume"
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in scanner-update data \\newline TWMV = Total White Matter Volume; TCV = Total Cortical Volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -598,7 +626,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 
 ```{r}
 #| label: fig-update3
-#| fig-cap: "Distribution of measurements by batch before and after harmonization. \\newline LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume"
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in scanner-update data \\newline LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -614,7 +642,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 
 ```{r}
 #| label: fig-update4
-#| fig-cap: "Distribution of measurements by batch before and after harmonization. \\newline AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume"
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in scanner-update data \\newline AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -681,7 +709,7 @@ Bland-Altman plots depicting the differences between the two batches before and 
 
 ```{r }
 #| label: tbl-life-icc
-#| tbl-cap: "ICCs before and after harmonization"
+#| tbl-cap: "ICCs before and after harmonization in LIFE-Adult data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -736,7 +764,7 @@ df2[, c("ROI", "ICC_CI", "ICC_nh_CI", "ICC_combat_CI")] |>
 
 ```{r }
 #| label: tbl-life-pd
-#| tbl-cap: "Percent differences before and after harmonization"
+#| tbl-cap: "Percent differences before and after harmonization in LIFE-Adult data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -778,7 +806,7 @@ pd_sub2 |>
 
 ```{r }
 #| label: tbl-life-signif
-#| tbl-cap: "Statistical significance of differences before and after harmonization"
+#| tbl-cap: "Statistical significance of differences before and after harmonization in LIFE-Adult data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -829,7 +857,7 @@ In addition, all PDs except for WMHV are substantially reduced after harmonizati
 Similarly, there are no significant differences between batches at baseline after the application of neuroHarmonize (except WMHV).
 Decreased but still significant differences at follow-up remain for all ROIs after both harmonization methods (see @tbl-life-bl-signif and @tbl-life-fu-signif).
 We provide the corresponding Bland-Altman plots for observed values at each timepoint in the supplement (see @fig-ba-bl-tgmv to @fig-ba-fu-av).\
-The agreement between WMHV using the same segmentation method on different MRI machines showed an ICC of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3), "-", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3), ")")` before and of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3), "-", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3), ")")` after harmonization.
+The agreement between WMHV using the same segmentation method on different MRI machines showed an ICC of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3), "--", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3), ")")` before and of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3), "--", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3), ")")` after harmonization.
 Measurements on the SKYRA were on average `r round(outcomes$update_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(outcomes$update_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of neuroHarmonize.
 A paired t-test of the batches was significant prior to harmonization (p-value = `r formatC(outcomes$update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t-statistic = `r formatC(outcomes$update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; df = `r outcomes$update_pwcs$WMHV_norm_pwc$df`) but ceased to be so afterwards (p-value = `r outcomes$update_pwcs$WMHV_adj_pwc_adj$p`; t-statistic = `r formatC(outcomes$update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; df = `r outcomes$update_pwcs$WMHV_adj_pwc_adj$df`).
 
@@ -850,15 +878,17 @@ Hence, batch differences in change scores solely result from the more challengin
 Secondly, even over a follow-up period of six years, the individual variance in volumetric changes is small compared to the measurement error for many ROIs.
 The ICED framework helps us to elucidate this constraint on harmonizability.
 The results show that systematic differences between batches can be removed using ComBat(@tbl-iced-means).
-Unsystematic measurement error is unamenable to harmonization, though (@tbl-iced-variances).
+Unsystematic measurement error is by nature unamenable to harmonization, though (@tbl-iced-variances).
+ICED-ICCs express how much of the total variability (within a scanner-segmentation combination) is explained by true variance and were thus unaffected by harmonization.
 Hence, even in the absence of batch effects, high reliability is only attainable when true variance sufficiently exceeds error variance.
-Therefore, acceptable ICCs were only observed for HCV and LVV, two structures that substantially atrophy or enlarge during ageing.
+Therefore, acceptable standard ICCs were only observed for HCV and LVV, two structures that substantially atrophy or enlarge during ageing.
 Analogously, longitudinal harmonizations were much more successful when evaluated on the scale of observed variables.
 Only then can we successfully differentiate the signal of true variance from noise.
 We have illustrated this by adding the extent of one standard deviation of the measured variable as a scale to Bland-Altman plots (@fig-ba-dtgmv to @fig-ba-fu-av).\
 WMHV consistently exhibited the poorest agreement.
 Even in the absence of segmentation software differences the ICC only narrowly exceeded our threshold after harmonization.
 As differences between batches were small and statistically non-significant after harmonization, this must be attributed to the substantial measurement error visible in @fig-update4.
+The plot also shows that this is particularly pronounced in smaller WMHV values while agreement improves as volumes increase.
 
 Our results confirm previous positive evaluations of ComBat methods on cross-sectional data[@tassi_assessment_2024; @sun_comparison_2022; @eshaghzadeh_torbati_multi-scanner_2021; @fortin_harmonization_2018; @pomponio_harmonization_2020; @yu_statistical_2018].
 They provide particularly solid evidence by leveraging the large *travelling brain* scanner-update dataset to establish a ground truth scenario.
@@ -953,7 +983,7 @@ scanner_software_comp[,2:3] <- round(scanner_software_comp[,2:3], digits = 2)
 
 ```{r}
 #| label: tbl-between-within
-#| tbl-cap: "Average percent differences between softwares and between scanners"
+#| tbl-cap: "Average percent differences between softwares and between scanners in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -985,7 +1015,7 @@ scanner_software_comp |>
 ::: landscape
 ```{r}
 #| label: tbl-iced-icc
-#| tbl-cap: "ICED ICCs before and after harmonization"
+#| tbl-cap: "ICED ICCs before and after harmonization in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1046,7 +1076,7 @@ iced[, c("ROI", paste0(rep(c("ICC_SKYRA_cat", "ICC_VERIO_cat", "ICC_SKYRA_recon6
 
 ```{r}
 #| label: tbl-iced-variances
-#| tbl-cap: "ICED variances before and after harmonization"
+#| tbl-cap: "ICED variances before and after harmonization in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1096,7 +1126,7 @@ iced[, c("ROI", paste0(rep(c("truevar", "SKYRAvar", "VERIOvar", "catvar", "recon
 
 ```{r}
 #| label: tbl-iced-means
-#| tbl-cap: "ICED means before and after harmonization"
+#| tbl-cap: "ICED means before and after harmonization in scanner-update data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1472,7 +1502,7 @@ pwc_all[, c("measure", "p", "p_nh", "p_combat")] |>
 
 ```{r }
 #| label: tbl-add-mult
-#| tbl-cap: "Statistical significance of additive and multiplicative batch effects before and after harmonization"
+#| tbl-cap: "Statistical significance of additive and multiplicative batch effects before and after harmonization in LIFE-Adult data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1537,7 +1567,7 @@ df2 <- df %>%
 
 ```{r }
 #| label: tbl-icc-cross
-#| tbl-cap: "ICCs before and after harmonization of results of cross-sectional pipelines"
+#| tbl-cap: "ICCs before and after harmonization of results of cross-sectional pipelines in LIFE-Adult data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1599,7 +1629,7 @@ df3$ROI <- paste0("\u0394", df3$ROI)
 
 ```{r }
 #| label: tbl-icc-change
-#| tbl-cap: "ICCs before and after harmonization of directly harmonized change scores"
+#| tbl-cap: "ICCs before and after harmonization of directly harmonized change scores in LIFE-Adult data"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1868,7 +1898,7 @@ pwc_all_fu[, c("measure", "p", "p_nh", "p_combat")] %>%
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dtgmv
-#| fig-cap: "Bland-Altman plots of TGMV changes. Blue vertical lines indicate the size of one standard deviationof change in TGMV. TGMV = Total Grey Matter Volume"
+#| fig-cap: "Bland-Altman plots of TGMV changes. Blue vertical lines indicate the size of one standard deviation of change in TGMV. TGMV = Total Grey Matter Volume"
 #| echo: false
 #| warning: false
 #| message: false
