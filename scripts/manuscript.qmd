@@ -302,9 +302,7 @@ After harmonization, ICCs improved substantially (range: `r round(min(update_lme
 Likewise, no pairwise comparison of two batches was significant after harmonization (see @tbl-update-signif).
 The highest average percent difference was `r pd_sub2[which.max(pd_sub2$mean_pd_post), "ROI"]` with `r round(pd_sub2[which.max(pd_sub2$mean_pd_post), "mean_pd_post"], digits = 2)`% (see @tbl-update-pd).\
 The ICED analyses produced ICCs \> 0.75 for all scanner-segmentation combinations across all ROIs.
-However, this SEM-based metric was largely unaltered after harmonization
-Neither scanner showed markedly higher reliability (see @tbl-iced-icc).
-\
+However, this SEM-based metric was largely unaltered after harmonization Neither scanner showed markedly higher reliability (see @tbl-iced-icc).\
 ComBat did not shift variances.
 However, scanner and segmentation means were all close to 0 afterwards indicating the reduction of systematic batch differences (see @tbl-iced-variances and @tbl-iced-means).\
 @fig-update to @fig-update4 illustrate the distribution of measurements in the batches before and after harmonization.
@@ -831,7 +829,7 @@ In addition, all PDs except for WMHV are substantially reduced after harmonizati
 Similarly, there are no significant differences between batches at baseline after the application of neuroHarmonize (except WMHV).
 Decreased but still significant differences at follow-up remain for all ROIs after both harmonization methods (see @tbl-life-bl-signif and @tbl-life-fu-signif).
 We provide the corresponding Bland-Altman plots for observed values at each timepoint in the supplement (see @fig-ba-bl-tgmv to @fig-ba-fu-av).\
-The agreement between WMHV using the same segmentation method on  different MRI machines showed an ICC of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3), "-", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3), ")")` before and of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3), "-", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3), ")")` after harmonization.
+The agreement between WMHV using the same segmentation method on different MRI machines showed an ICC of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3), "-", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3), ")")` before and of `r paste0(round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3), " (95% CI: ", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3), "-", round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3), ")")` after harmonization.
 Measurements on the SKYRA were on average `r round(outcomes$update_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(outcomes$update_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of neuroHarmonize.
 A paired t-test of the batches was significant prior to harmonization (p-value = `r formatC(outcomes$update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t-statistic = `r formatC(outcomes$update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; df = `r outcomes$update_pwcs$WMHV_norm_pwc$df`) but ceased to be so afterwards (p-value = `r outcomes$update_pwcs$WMHV_adj_pwc_adj$p`; t-statistic = `r formatC(outcomes$update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; df = `r outcomes$update_pwcs$WMHV_adj_pwc_adj$df`).
 
@@ -841,9 +839,9 @@ A paired t-test of the batches was significant prior to harmonization (p-value =
 
 Integrative data analyses in neuroimaging require strategies to account for batch effects arising from heterogeneity in scanners and software.
 Therefore, we evaluated the performance of ComBat methods in removing such effects across various ROIs using complementary statistical tests in cross-sectional and longitudinal designs.\
-Our analyses provided fully satisfying results for all ROIs in cross-sectional analyses.
+Our analyses provided fully satisfactory results for all ROIs in cross-sectional analyses.
 In contrast, ComBat did not achieve sufficient agreement of change scores.
-This was no artifact resulting from template-generation in longitudinal pipelines or manual editing of scans.
+This was not an artifact of template-generation in longitudinal pipelines or manual editing of scans.
 Furthermore, the direct harmonization of change scores was no solution to this problem.
 We attribute this result to two factors.\
 Firstly, ComBat has been more effective in removing additive than multiplicative batch effects (@tbl-add-mult).
@@ -865,7 +863,7 @@ As differences between batches were small and statistically non-significant afte
 Our results confirm previous positive evaluations of ComBat methods on cross-sectional data[@tassi_assessment_2024; @sun_comparison_2022; @eshaghzadeh_torbati_multi-scanner_2021; @fortin_harmonization_2018; @pomponio_harmonization_2020; @yu_statistical_2018].
 They provide particularly solid evidence by leveraging the large *travelling brain* scanner-update dataset to establish a ground truth scenario.
 Importantly, this high reliability could be achieved without modelling an overlap sample between batches [@dewey_deepharmony_2019; @maikusa_comparison_2021; @yamashita_harmonization_2019; @tian_deep_2022].
-Moreover, it was attained in spite of variable post-processing in the form of manual editing.\ 
+Moreover, it was attained in spite of variable post-processing in the form of manual editing. 
 However, our results also indicate concerningly low reliability when pooling data for the study of within-participant changes.
 They thus highlight previously unrecognized limitations in longitudinal settings[@beer_longitudinal_2020].
 
@@ -877,17 +875,17 @@ The high WMHV measurement error may be less pronounced in supervised algorithms 
 However, samseg has been found to have high reliability when compared to manual segmentations on the volumetric level and to be more robust in handling multi-site data than BIANCA[@ferris_optimizing_2023].\
 Furthermore, we cannot rule out that the observed problems in longitudinal harmonization would persist in the absence of segmentation software differences.
 Given the success of ComBat in the cross-sectional setting this seems unlikely, though.
-An empirical clarification would require a dataset of participants that underwent scanning in multiple scanners repeatedly with sufficient intervals for measurable longitudinal changes.
-\
+Empirically testing this would require a dataset of participants that underwent scanning in multiple scanners repeatedly with sufficient intervals for measurable longitudinal changes.\
 Lastly, it should be noted that harmonization techniques like ComBat exclusively focus on differences between scanners.
 However, drift within scanners over time can also affect results[@takao_effect_2011].
 
 ## Conclusions
 
-From our preregistered analyses, we derive the following conclusions: 1.
-ComBat can be used to harmonize cross-sectional datasets with compounded scanner and segmentation effects.
-2.
-ComBat does not successfully harmonize longitudinal data to allow the study of individual changes across ROIs.
+From our preregistered analyses, we derive the following conclusions:
+
+1.  ComBat can be used to harmonize cross-sectional datasets with compounded scanner and segmentation effects.
+
+2.  ComBat does not successfully harmonize longitudinal data to allow the study of individual changes across ROIs.
 
 Our results highlight the importance of the size of true variance relative to measurement error in integrative data analyses.
 We would thus recommend the use of models that allow modelling observed values at each timepoint as dependent variables in longitudinal settings.
@@ -1870,7 +1868,7 @@ pwc_all_fu[, c("measure", "p", "p_nh", "p_combat")] %>%
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dtgmv
-#| fig-cap: "Bland-Altman plots of TGMV changes. Blue vertical lines indicate the size of one standard deviationof TGMV. TGMV = Total Grey Matter Volume"
+#| fig-cap: "Bland-Altman plots of TGMV changes. Blue vertical lines indicate the size of one standard deviationof change in TGMV. TGMV = Total Grey Matter Volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1884,7 +1882,7 @@ print(ba_plots$wrapped_life_ba_plots[[paste0("dTGMV")]])
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dtcv
-#| fig-cap: "Bland-Altman plots of TCV changes. Blue vertical lines indicate the size of one standard deviation of TCV. TCV = Total Cortical Volume"
+#| fig-cap: "Bland-Altman plots of TCV changes. Blue vertical lines indicate the size of one standard deviation of change in TCV. TCV = Total Cortical Volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1897,7 +1895,7 @@ print(ba_plots$wrapped_life_ba_plots[[paste0("dTCV")]])
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dlvv
-#| fig-cap: "Bland-Altman plots of LVV changes. Blue vertical lines indicate the size of one standard deviation of LVV. LVV = bilateral lateral ventricle volume"
+#| fig-cap: "Bland-Altman plots of LVV changes. Blue vertical lines indicate the size of one standard deviation of change in LVV. LVV = bilateral lateral ventricle volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1910,7 +1908,7 @@ print(ba_plots$wrapped_life_ba_plots[[paste0("dLVV")]])
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dhcv
-#| fig-cap: "Bland-Altman plots of HCV changes. Blue vertical lines indicate tghe size of one standard deviation of HCV. HCV = bilateral hippocampal volume"
+#| fig-cap: "Bland-Altman plots of HCV changes. Blue vertical lines indicate tghe size of one standard deviation of change in HCV. HCV = bilateral hippocampal volume"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1923,7 +1921,7 @@ print(ba_plots$wrapped_life_ba_plots[[paste0("dHCV")]])
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dav
-#| fig-cap: "Bland-Altman plots of AV changes. Blue vertical lines indicate the size of one standard deviation of AV. AV = bilateral amygdala volume"
+#| fig-cap: "Bland-Altman plots of AV changes. Blue vertical lines indicate the size of one standard deviation of change in AV. AV = bilateral amygdala volume"
 #| echo: false
 #| warning: false
 #| message: false
