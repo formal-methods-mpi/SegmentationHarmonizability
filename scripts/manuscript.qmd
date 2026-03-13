@@ -116,8 +116,9 @@ We derived volumetric measures of the following regions of interest (ROIs):
 -   White matter hyperintensity volume (WMHV) - unit: $log_{10}$($mm^3$)
 
 We summed all bilateral measures over both hemispheres.
+If no composite value for an ROI was provided by an atlas, we calculated it by summing all relevant substructures. 
 Further details on the derivation of composite volumes are available in the [preregistration](https://osf.io/7dcuh/overview).
-TIV was not assessed in LIFE-Adult as this measure was not expected to change over time.
+TIV was not analyzed in LIFE-Adult as this measure was not expected to change over time.
 Furthermore, in longitudinal recon-all, TIV is always identical in all observations.
 Thus, comparing TIV in the two measures based on this pipeline would not make sense.
 Additionally, TWMV is not available in FreeSurfer's version 5.3.0 segmentation.
@@ -133,7 +134,7 @@ $$ $Y^*_{ijg}$ are the adjusted values for gene g of sample i in batch j.
 $\hat{\alpha_g}$ (the grand mean), $\hat{\beta_g}$ (the regression coefficients of biological covariates), $\hat{\gamma_{ig}}$ (the additive effect of a batch on a gene) and $\hat{\delta_{ig}}$ (the multiplicative effect of a batch on a gene) are estimated from the data.
 $X$ is the matrix of covariate values.
 
-The method was later adopted to harmonize neuroimaging data from different scanners  [@fortin_harmonization_2018].
+The method was later adopted to harmonize neuroimaging data from different scanners [@fortin_harmonization_2018].
 We harmonized the scanner-update data using ComBat as implemented in `neuroHarmonize` [@pomponio_harmonization_2020] with gender as a dichotomous covariate and a smooth function for continuous age values.
 In the LIFE-Adult study, we used both `longComBat()` [@beer_longitudinal_2020] with age and gender as linear covariates and `neuroHarmonize()` with the same covariates as above.
 As suggested by the authors of `neuroHarmonize`, we first trained the model on our baseline data and then also applied it to follow-up observations [@pomponio_neuroharmonize_2024].
@@ -157,9 +158,7 @@ The former could be transformed with an inverse hyperbolic sine transformation.
 A visual inspection showed that this was not successful for WMHV.
 Therefore, we used `bestnormalize()` [@peterson_finding_2021] to identify the optimal non-standardizing transformation excluding the ordered quantile technique.
 This was a Box-Cox transformation with lambda = -0.44 in LIFE-Adult and the decadic logarithm in the scanner-update data.
-We provide raincloud plots of the distributions in \[add figure\].
-
-\[TO DO: Raincloud plots per ROI pre/post transformation if applicable\]
+We provide raincloud plots of original measurements for all ROIs and after transformations if applicable in @fig-update-tiv-raincloud to @fig-life-wmhv-raincloud.
 
 ## Analyses
 
@@ -322,6 +321,7 @@ iced[, 2:ncol(iced)] <- apply(iced[, 2:ncol(iced)], 2, function(x) ifelse(abs(as
 ```
 
 Prior to harmonization, ICCs varied widely across ROIs (range: `r round(min(update_lme_icc_res_no_wmhv$ICC), digits = 2)` - `r round(max(update_lme_icc_res_no_wmhv$ICC), digits = 2)`).
+The disagreement was particularly strong for TCV, for which the neuromorphometrics atlas of CAT did not provide a composite volume, but even more pronounced for AV.
 ANOVAs returned statistically significant batch differences for all volumes.
 Likewise, average percent differences in batch comparisons exceeded 2% in all ROIs.
 Differences between segmentations were greater than those between scanners (see @tbl-between-within).\
@@ -464,7 +464,7 @@ pd_sub2 |>
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "100%"
+#| out-height: "90%"
 #| dpi: 900
 library(tidyverse)
 library(MetBrewer)
@@ -548,8 +548,8 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
       guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) + 
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
             axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
-            legend.spacing.y = unit(0.1, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
-      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.5, "cm"), legend.key.spacing.y = unit(0, "cm"), legend.key.spacing.x = unit(0, "cm"), 
+            legend.spacing.y = unit(0.0, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
+      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.5, "cm"), legend.key.spacing.y = unit(0.0, "cm"), legend.key.spacing.x = unit(0, "cm"),
       axis.line.x = element_line(linewidth = 0.3), axis.line.y = element_line(linewidth = 0.3)) +
       ylab(y_axis_title) + scale_color_manual(values = rep(colors, each = 2))
     if (grepl("adj", name)){
@@ -559,6 +559,9 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
   }
   y_range <- range(c(plots[[outcome]]$data[[outcome]], plots[[paste0(outcome, "_adj")]]$data[[outcome]]), na.rm = TRUE)
   plots[[outcome]] <- plots[[outcome]] + coord_cartesian(ylim = y_range)
+  if(outcome %in% c("TGMV", "TCV", "HCV")){
+    plots[[outcome]] <- plots[[outcome]] + labs(x = "mean of measurements") + theme(axis.title.x = element_text(size = 5))
+  }
   plots[[paste0(outcome, "_adj")]] <- plots[[paste0(outcome, "_adj")]] + coord_cartesian(ylim = y_range)
   comparison <- wrap_plots(list(plots[[outcome]], plots[[paste0(outcome, "_adj")]]), nrow = 1) + plot_layout(guides = "collect") & theme(legend.position = "right")
   comparisons[[outcome]] <- comparison
@@ -582,10 +585,10 @@ for (name in names(wmhv_dfs)){
     scale_shape_manual(values = c(16, 6)) +
     theme_classic(base_family = "Charter") +
     guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) +
-    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
             axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
-            legend.spacing.y = unit(0.1, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
-      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.3, "cm"), legend.key.spacing.y = unit(0, "cm"), legend.key.spacing.x = unit(0, "cm"), 
+            legend.spacing.y = unit(0.0, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
+      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.5, "cm"), legend.key.spacing.y = unit(0.0, "cm"), legend.key.spacing.x = unit(0, "cm"),
       axis.line.x = element_line(linewidth = 0.3), axis.line.y = element_line(linewidth = 0.3)) +
     ylab(y_axis_title) + scale_color_manual(values = rep(colors[3], 2))
   if (grepl("adj", name)){
@@ -594,7 +597,7 @@ for (name in names(wmhv_dfs)){
   plots[[paste0("WMHV", suffix)]] <- plt
 }
 y_range <- range(c(plots[["WMHV"]]$data[["WMHV"]], plots[[paste0("WMHV", "_adj")]]$data[["WMHV"]]), na.rm = TRUE)
-plots[["WMHV"]] <- plots[["WMHV"]] + coord_cartesian(ylim = y_range)
+plots[["WMHV"]] <- plots[["WMHV"]] + coord_cartesian(ylim = y_range) + labs(x = "mean of measurements") + theme(axis.title.x = element_text(size = 5))
 plots[[paste0("WMHV", "_adj")]] <- plots[[paste0("WMHV", "_adj")]] + coord_cartesian(ylim = y_range)
 comparison <- wrap_plots(list(plots[["WMHV"]], plots[[paste0("WMHV", "_adj")]]), nrow = 1) + plot_layout(guides = "collect") & theme(legend.position = "right")
 comparisons[["WMHV"]] <- comparison
@@ -616,7 +619,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "100%"
+#| out-height: "90%"
 #| dpi: 900
 p_combined <- wrap_plots(comparisons[[3]], comparisons[[4]],
                          nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
@@ -632,7 +635,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "100%"
+#| out-height: "90%"
 #| dpi: 900
 p_combined <- wrap_plots(comparisons[[5]], comparisons[[6]], 
                          nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
@@ -648,7 +651,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "100%"
+#| out-height: "90%"
 #| dpi: 900
 p_combined <- wrap_plots(comparisons[[7]], comparisons[[8]], 
                          nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
@@ -796,7 +799,7 @@ pd_sub2 |>
       "PD = percent difference;  ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; ",
       "TGMV = total grey matter volume; TWMV = total white matter volume; ",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume;"
     ),
     general_title  = "",
@@ -833,7 +836,7 @@ pwc_all[, c("measure", "p", "p_nh", "p_combat")] |>
     general = paste0(
       "ROI = region of interest; ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; ",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; ",
       "WMHV = white matter hyperintensity volume"
     ),
@@ -1413,7 +1416,7 @@ df2[, c("ROI", "ICC_CI", "ICC_nh_CI", "ICC_combat_CI")] |>
       "CI = confidence interval; ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; ",
       "\u0394 = change in",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; "
     ),
     general_title  = "",
@@ -1455,7 +1458,7 @@ pd_sub2 |>
       "PD = percent difference;  ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; ",
       "TGMV = total grey matter volume; TWMV = total white matter volume; ",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume;"
     ),
     general_title  = "",
@@ -1492,7 +1495,7 @@ pwc_all[, c("measure", "p", "p_nh", "p_combat")] |>
     general = paste0(
       "ROI = region of interest; ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; ",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; "
     ),
     general_title  = "",
@@ -1539,7 +1542,7 @@ longCombat_results %>%
     latex_options = c("hold_position", "scale_down")
   ) %>%
   footnote(
-    general = "ROI = region of interest; p add = p-value for additive effects; harm. = harmonized with longitudinal ComBat; p mult. = p-value for multiplicative effects; TGMV = total grey matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
+    general = "ROI = region of interest; p add = p-value for additive effects; harm. = harmonized with longitudinal ComBat; p mult. = p-value for multiplicative effects; TGMV = total grey matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
     general_title = "",
     threeparttable = TRUE
   )
@@ -1596,7 +1599,7 @@ df2[1:5, c("ROI", "ICC_nh_CI", "ICC_combat_CI")] |>
       "~ ComBat = harmonized with longitudinal ComBat; \u0394 = change in; ",
       "TIV = total intracranial volume; ",
       "TGMV = total grey matter volume; TWMV = total white matter volume; ",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
     ),
     general_title  = "",
@@ -1657,7 +1660,7 @@ df3[, c("ROI", "ICC_CI", "ICC_change_CI")] |>
       "CI = confidence interval; ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; \u0394 = change in; ",
       "TGMV = total grey matter volume; ",
-      "TCV = total cortical volume; LVV = lateral ventricle volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
       "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; ",
       "WMHV = white matter hyperintensity volume"
     ),
@@ -1776,7 +1779,7 @@ df_bl[, c("ROI", "ICC_CI", "ICC_nh_CI", "ICC_combat_CI")] %>%
   ) %>%
   kable_styling(latex_options = c("hold_position")) %>%
   footnote(
-    general = "ROI = region of interest; ICC = intraclass correlation coefficient; CI = confidence interval; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
+    general = "ROI = region of interest; ICC = intraclass correlation coefficient; CI = confidence interval; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
     general_title = "",
     threeparttable = TRUE
   )
@@ -1798,7 +1801,7 @@ df_fu[, c("ROI", "ICC_CI", "ICC_nh_CI", "ICC_combat_CI")] %>%
   ) %>%
   kable_styling(latex_options = c("hold_position")) %>%
   footnote(
-    general = "ROI = region of interest; ICC = intraclass correlation coefficient; CI = confidence interval; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
+    general = "ROI = region of interest; ICC = intraclass correlation coefficient; CI = confidence interval; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
     general_title = "",
     threeparttable = TRUE
   )
@@ -1820,7 +1823,7 @@ pd_bl %>%
   kable_styling(latex_options = c("hold_position")) %>%
   column_spec(which(colnames(pd_sub2) %in% c("pre", "nh", "combat")), extra_css = "text-align: right;") %>%
   footnote(
-    general = "ROI = region of interest; PD = percent difference; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; TGMV = total grey matter volume; TWMV = total white matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume",
+    general = "ROI = region of interest; PD = percent difference; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; TGMV = total grey matter volume; TWMV = total white matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume",
     general_title = "",
     threeparttable = TRUE
     )
@@ -1842,7 +1845,7 @@ pd_fu %>%
   kable_styling(latex_options = c("hold_position")) %>%
   column_spec(which(colnames(pd_sub2) %in% c("pre", "nh", "combat")), extra_css = "text-align: right;") %>%
   footnote(
-    general = "ROI = region of interest; PD = percent difference; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; TGMV = total grey matter volume; TWMV = total white matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume",
+    general = "ROI = region of interest; PD = percent difference; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; TGMV = total grey matter volume; TWMV = total white matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume",
     general_title = "",
     threeparttable = TRUE
   )
@@ -1864,7 +1867,7 @@ pwc_all_bl[, c("measure", "p", "p_nh", "p_combat")] %>%
   ) %>%
   kable_styling(latex_options = c("hold_position")) %>%
   footnote(
-    general = "ROI = region of interest; p = p-value; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
+    general = "ROI = region of interest; p = p-value; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
     general_title = "",
     threeparttable = TRUE
   )
@@ -1886,7 +1889,7 @@ pwc_all_fu[, c("measure", "p", "p_nh", "p_combat")] %>%
   ) %>%
   kable_styling(latex_options = c("hold_position")) %>%
   footnote(
-    general = "ROI = region of interest; p = p-value; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
+    general = "ROI = region of interest; p = p-value; ~ neuroHarm = harmonized with neuroHarmonize; ~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume",
     general_title = "",
     threeparttable = TRUE
   )
@@ -1895,6 +1898,274 @@ pwc_all_fu[, c("measure", "p", "p_nh", "p_combat")] %>%
 \FloatBarrier
 
 ## Supplementary figures
+
+```{r update_raincloud_prep}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+library(ggdist)
+df <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update.csv")
+df_wmhv <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update.csv")
+df$SITE <- gsub("_", " ", df$SITE)
+df$SITE <- factor(df$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
+df_wmhv$asinh <- asinh(df_wmhv$Lesions)
+# retransform LVV
+df$LVV_asinh <- df$LVV
+df$LVV <- sinh(df$LVV)
+colors = met.brewer(name="Java", n=5, type="discrete")
+colors <- colors[c(1,2,4,5)]
+colors <- rep(colors, each = 2)
+make_raincloud <- function(data, col, group_val, fill_color, dotsize = 1.25) {
+  data_filtered <- data %>% filter(SITE == group_val)
+  
+  ggplot(data_filtered, aes(x = 1, y = .data[[col]])) +
+    stat_halfeye(adjust = 0.5, width = 0.6, justification = -0.2,
+                 .width = 0, point_colour = NA, fill = fill_color) +
+    geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.5) +
+    stat_dots(side = "left", justification = 1.1, dotsize = dotsize) +
+    coord_flip() +
+    labs(title = as.character(group_val), x = NULL, y = col) +
+    theme_classic() +
+    theme(axis.text.y = element_blank(), axis.title.x = element_blank(), axis.ticks.y = element_blank())
+}
+# Create one plot per column
+cols <- c("TIV", "TGMV", "TWMV", "TCV", "LVV", "LVV_asinh", "HCV", "AV")
+group_vals <- c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat")
+plots_by_col <- lapply(cols, function(col) {
+  
+  group_plots <- mapply(make_raincloud,
+                        group_val = group_vals,
+                        fill_color = colors,
+                        MoreArgs = list(data = df, col = col),
+                        SIMPLIFY = FALSE)
+  
+  wrap_plots(group_plots, ncol = 2)
+})
+
+# Name the list by column for easy access
+names(plots_by_col) <- cols
+
+# create plots for WMHV
+# remove highest values to enable visualisation
+df_wmhv_cut <- df_wmhv[df_wmhv$Lesions < 5000,] 
+add_row_label <- function(plot_list, label) {
+  plot_list[[1]] <- plot_list[[1]] + 
+    labs(x = label) +
+    theme(axis.title.y = element_text(angle = 90, vjust = 0.5))
+  plot_list
+}
+unharmonized <- mapply(make_raincloud,
+       group_val = c("SKYRA", "VERIO"),
+       fill_color = colors[5:6],
+       MoreArgs = list(data = df_wmhv_cut, col = "Lesions"),
+       SIMPLIFY = FALSE)
+asinh  <- mapply(make_raincloud,
+                 group_val = c("SKYRA", "VERIO"),
+                 fill_color = colors[5:6],
+                 MoreArgs = list(data = df_wmhv_cut, col = "asinh"),
+                 SIMPLIFY = FALSE)
+norm  <- mapply(make_raincloud,
+                 group_val = c("SKYRA", "VERIO"),
+                 fill_color = colors[5:6],
+                 MoreArgs = list(data = df_wmhv_cut, col = "WMHV_norm"),
+                 SIMPLIFY = FALSE)
+unharmonized <- add_row_label(unharmonized, "original")
+asinh  <- add_row_label(asinh, "asinh")
+norm   <- add_row_label(norm, expression("log"[10]))
+wmhv_plots <- wrap_plots(unname(c(unharmonized, asinh, norm)), nrow = 3)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-tiv-raincloud
+#| fig-cap: "Raincloud plots of TIV by batch in scanner-update data. TIV = Total Intracranial Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TIV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-tgmv-raincloud
+#| fig-cap: "Raincloud plots of TGMV by batch in scanner-update data. TGMV = Total Grey Matter Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TGMV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-twmv-raincloud
+#| fig-cap: "Raincloud plots of TWMV by batch in scanner-update data. TWMV = Total White Matter Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TWMV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-tcv-raincloud
+#| fig-cap: "Raincloud plots of TCV by batch in scanner-update data. TCV = Total Cortical Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TCV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-lvv-raincloud
+#| fig-cap: "Raincloud plots of LVV by batch in scanner-update data. LVV = Total Bilateral Lateral Ventricle Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$LVV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-lvv-asinh-raincloud
+#| fig-cap: "Raincloud plots of LVV by batch after inverse hyperbolic sine transformation in scanner-update data. LVV = Total Bilateral Lateral Ventricle Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$LVV_asinh)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-hcv-raincloud
+#| fig-cap: "Raincloud plots of HCV by batch in scanner-update data. HCV = Total Bilateral Hippocampal Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$HCV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-av-raincloud
+#| fig-cap: "Raincloud plots of AV by batch in scanner-update data. AV = Total Bilateral Amygdala Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$AV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-wmhv-raincloud
+#| fig-cap: "Raincloud plots of WMHV by batch in scanner-update data. 1st row: original data: 2nd row: after inverse hyperbolic sine transformation. 3rd row: after decadic log transformation. The maximum value is not depicted. WMHV = White Matter Hyperintensity Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(wmhv_plots)
+```
+
+```{r life_raincloud_prep}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+df <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/life/Data/df_life.csv")
+df_wmhv <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/life/Data/df_life_wmhv.csv")
+# retransform LVV
+df$LVV_asinh <- df$LVV
+df$LVV <- sinh(df$LVV)
+df_wmhv$WMHV_asinh <- asinh(df_wmhv$WMHV)
+df_wmhv$WMHV_boxcox <- df_wmhv$WMHV_norm
+# how many were < 20k
+n_over_10k <- length(which(df_wmhv$WMHV >= 10000))
+df_wmhv <- df_wmhv[df_wmhv$WMHV < 10000,]
+group_vals <- c("samseg", "recon5")
+cols <- c("TGMV", "TCV", "LVV", "LVV_asinh", "HCV", "AV")
+plots_by_col <- lapply(cols, function(col) {
+  
+  group_plots <- mapply(make_raincloud,
+                        group_val = group_vals,
+                        fill_color = c(colors[5], colors[3]),
+                        MoreArgs = list(data = df, col = col),
+                        SIMPLIFY = FALSE)
+  group_plots[[1]] <- group_plots[[1]] + labs(x = col)
+  
+  wrap_plots(group_plots, ncol = 2)
+})
+plots_by_col <- wrap_plots(plots_by_col, nrow = 6)
+
+group_vals <- c("samseg", "lst")
+cols <- c("WMHV", "WMHV_asinh", "WMHV_boxcox")
+plots_by_col_wmhv <- lapply(cols, function(col) {
+  
+  group_plots <- mapply(make_raincloud,
+                        group_val = group_vals,
+                        fill_color = c(colors[5], colors[3]),
+                        MoreArgs = list(data = df_wmhv, col = col),
+                        SIMPLIFY = FALSE)
+  group_plots[[1]] <- group_plots[[1]] + labs(x = col)
+  
+  wrap_plots(group_plots, ncol = 2)
+})
+
+wmhv_plots <- wrap_plots(plots_by_col_wmhv, nrow = 3)
+wmhv_caption <- paste0("Raincloud plots of WMHV by batch in LIFE-Adult data. 1st row: original data: 2nd row: after inverse hyperbolic sine transformation. 3rd row: after decadic log transformation. The highest ",  n_over_10k, " values are not depicted. WMHV = White Matter Hyperintensity Volume")
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-life-raincloud
+#| fig-cap: "Raincloud plots of measurements by batch in LIFE-Adult data. TGMV = total grey matter volume; TCV = total cortical volume; LVV = bilateral lateral ventricle volume; LVV_asinh = bilateral lateral ventricle volume after inverse hyperbolic sine transformation; HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-life-wmhv-raincloud
+#| fig-cap: !expr wmhv_caption
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(wmhv_plots)
+```
 
 ```{r fig.width=6, fig.height=12}
 #| label: fig-ba-dtgmv
