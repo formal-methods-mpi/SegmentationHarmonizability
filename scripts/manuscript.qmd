@@ -154,8 +154,10 @@ ComBat is a harmonization method developed to remove additive and multiplicative
 Observed data are adjusted as:
 
 $$
-Y^*_{ijg} = \frac{Y_{ijg} - \hat{\alpha_g} - X\hat{\beta_g} - \hat{\gamma_{jg}}}{\hat{\delta_{jg}}} + X\hat{\beta_g} - \hat{\gamma_{jg}}
-$$ $Y^*_{ijg}$ are the adjusted values for gene g of sample i in batch j.
+Y^*_{ijg} = \frac{Y_{ijg} - \hat{\alpha_g} - X\hat{\beta_g} - \hat{\gamma_{jg}}}{\hat{\delta_{jg}}} + \hat{\alpha_g} + X\hat{\beta_g} 
+$$ 
+
+$Y^*_{ijg}$ are the adjusted values for gene g of sample i in batch j.
 $\hat{\alpha_g}$ (the grand mean), $\hat{\beta_g}$ (the regression coefficients of biological covariates), $\hat{\gamma_{ig}}$ (the additive effect of a batch on a gene) and $\hat{\delta_{ig}}$ (the multiplicative effect of a batch on a gene) are estimated from the data.
 $X$ is the matrix of covariate values.
 
@@ -1129,7 +1131,7 @@ This research was supported by LIFE Leipzig Research Center for Civilization Dis
 
 # Competing interests
 
-The authors declare that no competing interests exist.
+The authors declare no competing interests.
 
 # References {#sec-references}
 
