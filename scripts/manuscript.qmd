@@ -1,6 +1,6 @@
 ---
-title: "Potential and Limitations of ComBat Harmonization for Heterogenous Neuroimaging Data"
-author: "Laurenz Lammer"
+title: ""
+author-meta: ""
 format:
   pdf:
     papersize: a4
@@ -10,6 +10,12 @@ format:
       - \usepackage[section]{placeins}
       - \usepackage{tikz}
       - \usetikzlibrary{arrows, positioning, shapes, fit, backgrounds, calc, shapes.geometric}
+      - \usepackage{authblk}
+      - \renewcommand\Affilfont{\small}
+      - \usepackage{orcidlink}
+    knitr:
+      opts_chunk:
+        dev: "cairo_pdf"
 crossref:
   tbl-prefix: "Table"
   fig-prefix: "Figure"
@@ -18,6 +24,43 @@ editor:
   markdown:
     wrap: sentence
 ---
+
+\title{Potential and Limitations of ComBat Harmonization}
+\author[1,2,3]{Laurenz Lammer\orcidlink{0000-0001-5612-4924}}
+\author[1,4]{Frauke Beyer\orcidlink{0000-0001-5401-852X}}
+\author[1,4,5]{A. Veronica Witte\orcidlink{0000-0001-9054-6688}}
+\author[1,3,4,5,6]{Arno Villringer\orcidlink{0000-0003-2604-2404}}
+\author[2,3,7]{Ulman Lidenberger\orcidlink{0000-0001-8428-6453}}
+\author[8,9]{Denis Gerstorf\orcidlink{0000-0002-2133-9498}}
+\author[2,7,10]{Andreas M. Brandmaier\orcidlink{0000-0001-8765-6982}}
+\affil[1]{Department of Neurology, Max Planck Institute for Human Cognitive and Brain Sciences, Leipzig, Germany}
+\affil[2]{Center for Lifespan Psychology, Max Planck Institute for Human Development, Berlin, Germany}
+\affil[3]{Max Planck School of Cognition, Leipzig, Germany}
+\affil[4]{Day Clinic for Cognitive Neurology, University Hospital Leipzig, Leipzig, Germany}
+\affil[5]{Leipzig Research Centre for Civilization Diseases (LIFE), Leipzig University, Leipzig, Germany}
+\affil[6]{MindBrainBody Institute, Berlin School of Mind and Brain, Humboldt University, Berlin, Germany}
+\affil[7]{Max Planck UCL Centre for Computational Psychiatry and Ageing Research, Berlin, Germany, and, London, UK}
+\affil[8]{Department of Psychology, Humboldt-Universität zu Berlin, Berlin, Germany}
+\affil[9]{German Institute for Economic Research (DIW), Socio-Economic Panel, Berlin, Germany}
+\affil[10]{Department of Psychology, MSB Medical School Berlin, Berlin, Germany}
+\maketitle
+## Corresponding author
+Laurenz Lammer (lammer@cbs.mpg.de)
+
+## Author contributions
+Author roles were classified using the Contributor Role Taxonomy ([CRediT](https://credit.niso.org/)) as follows:
+
+**Conceptualization**: Laurenz Lammer, Frauke Beyer, Ulman Lidenberger, Denis Gerstorf, Andreas M. Brandmaier     
+**Methodology**: Laurenz Lammer, Frauke Beyer,  Andreas M. Brandmaier  
+**Investigation**: Frauke Beyer  
+**Software, Formal analysis, Visualization**: Laurenz Lammer  
+**Data Curation**: Laurenz Lammer, Frauke Beyer  
+**Resources, Supervision**: A. Veronica Witte, Arno Villringer, Ulman Lidenberger  
+**Funding acquisition**: A. Veronica Witte, Arno Villringer  
+**Writing – original draft**: Laurenz Lammer    
+**Writing – review & editing**: all authors  
+
+\newpage
 
 # Abstract
 
@@ -47,7 +90,8 @@ Hence, numerous multicentre neuroimaging studies have been conducted to facilita
 Even larger sample sizes can be attained by conducting integrative data analyses (IDA) in which data from multiple studies are pooled [@curran_integrative_2009].
 For example, Bethlehem et al. recently aggregated over 100,000 brain MRIs to develop brain charts across the human lifespan [@bethlehem_brain_2022].
 
-Integrating data from multiple sites and studies also introduces new challenges, though. A central concern in multicentre studies is that images acquired on different scanners differ systematically [@medawar_estimating_2021].
+Integrating data from multiple sites and studies also introduces new challenges, though.
+A central concern in multicentre studies is that images acquired on different scanners differ systematically [@medawar_estimating_2021].
 To address this, several data-harmonization approaches have been established.
 Many rely on *travelling brains*, i.e. participants that undergo imaging on multiple scanners [@maikusa_comparison_2021; @yamashita_harmonization_2019; @tian_deep_2022].
 However, this is a resource-intensive logistical challenge for any study and impossible when datasets are integrated post hoc.
@@ -79,7 +123,7 @@ Moreover, we provide an evaluation of the performance of ComBat in longitudinal 
 We preregistered this study at [osf](https://osf.io/7dcuh/overview).
 The only deviation from the preregistration was the addition of absolute value bars in the percent difference formula.
 We also conducted multiple additional clearly labelled exploratory analyses.
-All code used to process, analyse and visualize the data is available on [github]().
+All code used to process, analyse and visualize the data is available on [github](https://github.com/formal-methods-mpi/SegmentationHarmonizability).
 All analyses were performed in R version 4.5.0 except for neuroHarmonize which was applied in Python version 3.11.2.
 
 ```{r life_age_gender}
@@ -97,10 +141,10 @@ The data were originally collected to study the effects of a scanner update betw
 This sample consists of 121 healthy participants (median age = 28 years, range = 19--54 years; 61 women) that were each scanned on two different 3 Tesla MRI scanners.
 The time between sessions ranged from 0.5 to 18 weeks (median = 7.7 weeks).\
 Additionally, we used data from the longitudinal LIFE-Adult neuroimaging sample[@engel_cohort_2023] to evaluate the performance of ComBat in longitudinal data.
-At baseline, \~2600 participants underwent MR imaging (median age = `{r} round(median(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years, range = `{r} round(min(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)`--`{r} round(max(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years; `{r} round(mean(life_age_gender[life_age_gender$timepoint == "BL", "GENDER"], na.rm = T), digits = 2)*100`% women) of which \~1600 returned for follow-up imaging after \~6 years. Our study's requirements allowed us to include ~1000 particpants with two timepoints. The samples are hereafter referred to as the cross-sectional and the longitudinal dataset.
+At baseline, \~2600 participants underwent MR imaging (median age = `{r} round(median(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years, range = `{r} round(min(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)`--`{r} round(max(life_age_gender[life_age_gender$timepoint == "BL", "AGE"], na.rm = T), digits = 0)` years; `{r} round(mean(life_age_gender[life_age_gender$timepoint == "BL", "GENDER"], na.rm = T), digits = 2)*100`% women) of which \~1600 returned for follow-up imaging after \~6 years.
+Our study's requirements allowed us to include \~1000 particpants with two timepoints.
+The samples are hereafter referred to as the cross-sectional and the longitudinal dataset.
 Both studies were approved by the ethics committee of the Faculty of Medicine at the University of Leipzig and all participants gave written informed consent for being included in the study according to the Declaration of Helsinki.\
-
-
 
 ## Neuroimaging
 
@@ -155,7 +199,7 @@ Observed data are adjusted as:
 
 $$
 Y^*_{ijg} = \frac{Y_{ijg} - \hat{\alpha_g} - X\hat{\beta_g} - \hat{\gamma_{jg}}}{\hat{\delta_{jg}}} + \hat{\alpha_g} + X\hat{\beta_g} 
-$$ 
+$$
 
 $Y^*_{ijg}$ are the adjusted values for gene g of sample i in batch j.
 $\hat{\alpha_g}$ (the grand mean), $\hat{\beta_g}$ (the regression coefficients of biological covariates), $\hat{\gamma_{ig}}$ (the additive effect of a batch on a gene) and $\hat{\delta_{ig}}$ (the multiplicative effect of a batch on a gene) are estimated from the data.
@@ -242,12 +286,12 @@ PD_g = 100 * \frac{2}{n} \sum_{i=1}^{n} \frac{V_{ig} - S_{ig}}{|V_{ig}| + |S_{ig
 $$
 
 where $V_{ig}$ and $S_{ig}$ are the volumes of ROI g of participant i in two different batches.
-The absolute differences are scaled per individual so that the PD is a measure of mismatch relative to each participant's volume and not the sample's average volume. 
+The absolute differences are scaled per individual so that the PD is a measure of mismatch relative to each participant's volume and not the sample's average volume.
 Absolute value bars are necessary to avoid that changes of different signs cancel each other out.
 
 ### Significance tests
 
-To test for significant differences, we calculated repeated-measures two-tailed ANOVAs for the cross-sectional dataset and two-tailed paired t-tests for the longitudinal  data.
+To test for significant differences, we calculated repeated-measures two-tailed ANOVAs for the cross-sectional dataset and two-tailed paired t-tests for the longitudinal data.
 The ANOVAs were followed up with two-tailed paired t-tests with Hommel correction.
 
 ### Intraclass effect decomposition
@@ -464,6 +508,13 @@ We conducted five exploratory analyses.
 #| warning: false
 #| message: false
 #| error: false
+# set font for figures
+library(showtext)
+library(ggplot2)
+font_add_google("Fira Sans", "firasans")
+showtext_auto()
+theme_set(theme_classic(base_family = "firasans", base_size = 11))
+# load and prepare results 
 load("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/Results/outcomes.RData")
 update_lme_icc_res <- outcomes$update_lme_icc_res
 update_lme_icc_res_no_wmhv <- update_lme_icc_res[update_lme_icc_res$ROI != "WMHV",]
@@ -654,6 +705,7 @@ library(MetBrewer)
 library(patchwork)
 library(showtext)
 showtext_auto()
+font_add_google("EB Garamond")
 colors = met.brewer(name="Java", n=5, type="discrete")
 colors <- colors[c(1,2,4,5)]
 # load the unadjusted data from the scanner update study 
@@ -727,7 +779,7 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
     plt <- ggplot(data = df, aes(x = factor(id), y = .data[[outcome]], color = SITE, group = SITE, shape = SITE)) +
       geom_point(size = 0.75, alpha = 0.85, stroke = 0.4) +
       scale_shape_manual(values = c(16, 1, 16, 1, 16, 1, 16, 1)) +
-      theme_classic(base_family = "Charter") +
+      theme_classic(base_family = "garamond") +
       guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) + 
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
             axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
@@ -766,7 +818,7 @@ for (name in names(wmhv_dfs)){
   plt <- ggplot(data = df, aes(x = factor(id), y = .data[["WMHV"]], color = SITE, group = SITE, shape = SITE)) +
     geom_point(size = 0.75, alpha = 0.85, stroke = 0.4) +
     scale_shape_manual(values = c(16, 1)) +
-    theme_classic(base_family = "Charter") +
+    theme_classic(base_family = "garamond") +
     guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) +
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
             axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
@@ -983,7 +1035,7 @@ pd_sub2 |>
       "~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; ",
       "TGMV = total grey matter volume; TWMV = total white matter volume; ",
       "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
-      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume;"
+      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
     ),
     general_title  = "",
     threeparttable = TRUE
@@ -1105,6 +1157,12 @@ From our preregistered analyses, we derive the following conclusions:
 2.  ComBat does not successfully harmonize longitudinal data to allow the study of individual changes.
 
 Our results highlight the importance of the size of true variance relative to measurement error in integrative data analyses.
+IDAs address random sampling error but can not mitigate measurement error.
+Importantly, large measurement errors substantially shrink effect estimates [@brandmaier_rethinking_2026].
+Hence, IDA researchers should bear measurement error in mind when deciding on their methodology.\
+Improvements in measurement reliability through increased field strengths [@calabro_leveraging_2025] hold promise.
+Alternatively, cluster scanning [@elliott_precision_2026] at regular field strengths can mitigate measurement error by providing multiple indicators per timepoint [@von_oertzen_effect_2010].
+However, neither is currently available on a large scale.
 We would thus recommend the use of models that allow modelling observed values at each timepoint as dependent variables in longitudinal settings.
 Researchers could use linear mixed effects models to distinguish within- and between-participant effects of age [@van_de_pol_simple_2009].
 If used at all, change scores should be restricted to datasets with extensive follow-up periods and for ROIs with substantial change.
@@ -1118,9 +1176,9 @@ Our results help to clarify when ComBat methods can be successfully employed to 
 
 # Code and data availability
 
-All code is published on [github]().
-The cross-sectional data is published on [osf]().
-If you execute [this script](), you can reproduce all results based on this dataset.
+All code is published on [github](https://github.com/formal-methods-mpi/SegmentationHarmonizability).
+The cross-sectional data is published on [osf](https://osf.io/n3eg8/overview).
+If you execute [this script](https://github.com/formal-methods-mpi/SegmentationHarmonizability/blob/main/scripts/reproduction.qmd), you can reproduce all results based on this dataset.
 We were granted access to the longitudinal data by LIFE (Leipziger Forschungszentrum für Zivilisationserkrankungen) under project agreement PV-894.
 All data will exclusively be shared by LIFE (https://www.uniklinikum-leipzig.de/einrichtungen/life) based on a project proposal under data protection rules according to the University of Leipzig.
 Thus, we can not share this dataset.
@@ -1619,7 +1677,7 @@ df2[, c("ROI", "ICC_CI", "ICC_nh_CI", "ICC_combat_CI")] |>
       "~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; ",
       "\u0394 = change in",
       "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
-      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; "
+      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
     ),
     general_title  = "",
     threeparttable = TRUE
@@ -1661,7 +1719,7 @@ pd_sub2 |>
       "~ ComBat = harmonized with longitudinal ComBat; TIV = total intracranial volume; ",
       "TGMV = total grey matter volume; TWMV = total white matter volume; ",
       "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
-      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume;"
+      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
     ),
     general_title  = "",
     threeparttable = TRUE
@@ -1698,7 +1756,7 @@ pwc_all[, c("measure", "p", "p_nh", "p_combat")] |>
       "ROI = region of interest; ~ neuroHarm = harmonized with neuroHarmonize; ",
       "~ ComBat = harmonized with longitudinal ComBat; TGMV = total grey matter volume; ",
       "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
-      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume; "
+      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
     ),
     general_title  = "",
     threeparttable = TRUE
