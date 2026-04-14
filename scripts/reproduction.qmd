@@ -16,7 +16,6 @@ format:
 crossref:
   tbl-prefix: "Table"
   fig-prefix: "Figure"
-bibliography: references.bib
 editor:
   markdown:
     wrap: sentence
@@ -43,7 +42,8 @@ library(glue) # version 1.8.0
 library(lavaan) # version 0.6-21
 library(BlandAltmanLeh) # version 0.3.1
 library(patchwork) # version 1.3.1
-library(showtext) # 0.9-7
+library(showtext) # version 0.9-7
+library(ggplot2) # version 4.0.2
 
 # load data from osf
 df_update <- read.csv("https://osf.io/deru3/?action=download", sep = ",", header=TRUE)
@@ -566,8 +566,6 @@ update_ba_plot_comparisons[["WMHV"]] <- plots
 #| message: false
 #| error: false
 # set font for figures
-library(showtext)
-library(ggplot2)
 font_add_google("Fira Sans", "firasans")
 showtext_auto()
 theme_set(theme_classic(base_family = "firasans", base_size = 11))
@@ -748,7 +746,7 @@ font_add_google("EB Garamond")
 colors = met.brewer(name="Java", n=5, type="discrete")
 colors <- colors[c(1,2,4,5)]
 # load the unadjusted data from the scanner update study 
-df_update <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update.csv")
+df_update <- read.csv("https://osf.io/deru3/?action=download", sep = ",", header=TRUE)
 # break each scanner-segmentation combination down to a scanner and a segmentation variable
 df_update$scanner <- ifelse(grepl("VER", df_update$SITE), "VERIO", "SKYRA")
 df_update <- df_update %>%
@@ -758,44 +756,22 @@ df_update <- df_update %>%
     grepl("recon6", SITE) ~ "recon6",
     grepl("recon7", SITE) ~ "recon7"
   ))
-# for unscaled age data
-QA <- read.csv("/data/pt_nro186_lifeupdate/Data/FREESURFER/QA/QA_list_short.csv")
-# remove empty rows
-# remove empty rows
-QA <- QA[1:121,]
-# create id col, add 0 that might got lost at the beginning/end, remove ., add "sub-"
-# first add 0 lost at the end
-QA$ID <- ifelse(nchar(sub(".*\\.", "", QA$ID)) == 1, paste0(QA$ID, "0"), QA$ID)
-QA$id <- ifelse(nchar(QA$ID) != 7, gsub("\\.", "", paste0("sub-" ,QA$ID)), gsub("\\.", "", paste0("sub-", "0", QA$ID)))
 
-# trim trailing spaces
-QA$id <- trimws(QA$id)
-QA$correction.necessary <- ifelse(is.na(QA$correction.necessary), 0, QA$correction.necessary)
-# rename German colnames
-QA <- QA %>%
-  rename(
-    "age" = "Alter_aktuell",
-    "gender" = "Geschlecht"
-  )
-df_update <- df_update %>%
-  select(id, TIV, TGMV, TWMV, TCV, LVV, HCV, AV, SITE) %>%
-  left_join(QA[,c("id", "correction.necessary", "age", "gender")], by = "id")
 
 # load the harmonized data from the scanner update study 
-df_update_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update_adj.csv", col.names = colnames(df_update)[2:8])
+df_update_adj <- read.csv("https://osf.io/6ynfj/?action=download", sep = ",", header=TRUE)
 # fill in the missing data from the unadjusted df (these cols must not be included during harmonization) 
 df_update_adj[,c("id", "SITE", "age", "gender")] <- df_update[,c("id", "SITE", "age", "gender")]
 df_update$SITE <- gsub("_", " ", df_update$SITE)
 df_update_adj$SITE <- gsub("_", " ", df_update_adj$SITE)
 df_update$SITE <- factor(df_update$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
 df_update_adj$SITE <- factor(df_update_adj$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
-df_update_wmhv <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update.csv")
-df_update_wmhv_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update_adj.csv")
+df_update_wmhv <- read.csv("https://osf.io/mxde5/?action=download", sep = ",", header=TRUE)
 df_update_wmhv$SITE <- ifelse(df_update_wmhv$scanner == "skyra", "SKYRA samseg", "VERIO samseg")
 df_update_wmhv$SITE <- factor(df_update_wmhv$SITE, levels = c("SKYRA samseg", "VERIO samseg"))
-df_update_wmhv_adj[,c("id", "SITE")] <- df_update_wmhv[,c("id", "SITE")]
 df_update_wmhv$WMHV <- df_update_wmhv$WMHV_norm
-df_update_wmhv_adj$WMHV <- df_update_wmhv_adj$X..WMHV_norm  
+df_update_wmhv_adj <- df_update_wmhv
+df_update_wmhv_adj$WMHV <- df_update_wmhv$WMHV_adj  
 plots <- list()
 comparisons <- list()
 dfs <- list(df_update = df_update, df_update_adj = df_update_adj)
