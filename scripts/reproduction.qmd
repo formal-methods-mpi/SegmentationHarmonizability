@@ -1,0 +1,1519 @@
+---
+title: "Cross-sectional results reproduction"
+author: "Laurenz Lammer"
+format:
+  pdf:
+    papersize: a4
+    keep-tex: true
+    header-includes:
+      - \usepackage{flafter}
+      - \usepackage[section]{placeins}
+      - \usepackage{tikz}
+      - \usetikzlibrary{arrows, positioning, shapes, fit, backgrounds, calc, shapes.geometric}
+    knitr:
+      opts_chunk:
+        dev: "cairo_pdf"
+crossref:
+  tbl-prefix: "Table"
+  fig-prefix: "Figure"
+bibliography: references.bib
+editor:
+  markdown:
+    wrap: sentence
+---
+
+# Purpose of the script
+
+This script serves to allow the reproduction of the results of our study. 
+We were not able to publish the longitudinal dataset but the data from the cross-sectional scanner update study are uploaded to osf. 
+
+# Reproduction of result presentation in the results section
+
+```{r analyses}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+# load required packages
+# versions used in our analyses in respective comments
+library(tidyverse) # version 2.0.0
+library(lme4) # version 1.1-38
+library(rstatix) # version 0.7.3
+library(glue) # version 1.8.0
+library(lavaan) # version 0.6-21
+library(BlandAltmanLeh) # version 0.3.1
+library(patchwork) # version 1.3.1
+library(showtext) # 0.9-7
+
+# load data from osf
+df_update <- read.csv("https://osf.io/deru3/?action=download", sep = ",", header=TRUE)
+# break each scanner-segmentation combination down to a scanner and a segmentation variable
+df_update$scanner <- ifelse(grepl("VER", df_update$SITE), "VERIO", "SKYRA")
+df_update <- df_update %>%
+  mutate(segmentation = case_when(
+    grepl("samseg", SITE) ~ "samseg",
+    grepl("cat", SITE) ~ "cat",
+    grepl("recon6", SITE) ~ "recon6",
+    grepl("recon7", SITE) ~ "recon7"
+  ))
+# load the adjusted data from the scanner update study 
+df_update_adj <- read.csv("https://osf.io/6ynfj/?action=download", sep = ",", header=TRUE)
+
+df_update_no_correction <- read.csv("https://osf.io/58g3m/?action=download", sep = ",", header=TRUE)
+
+df_update_no_correction_adj <- read.csv("https://osf.io/4rbt7/?action=download", sep = ",", header=TRUE)
+
+# store the dfs in a list
+update_dfs <- list(df_update = df_update, df_update_adj = df_update_adj, df_update_no_correction = df_update_no_correction,
+            df_update_no_correction_adj = df_update_no_correction_adj)
+
+# some analyses will need the dfs in the wide format
+df_update_wide <- df_update %>%
+  pivot_wider(
+    names_from = c(SITE),
+    values_from = c(TIV, TGMV, TWMV, TCV, LVV, HCV, AV),
+    id_cols = id  
+  )
+df_update_adj_wide <- df_update_adj %>%
+  pivot_wider(
+    names_from = c(scanner, segmentation),
+    values_from = c(TIV, TGMV, TWMV, TCV, LVV, HCV, AV),
+    id_cols = id  
+  )
+
+df_update_no_correction_wide <- df_update_no_correction %>%
+  pivot_wider(
+    names_from = c(SITE),
+    values_from = c(TIV, TGMV, TWMV, TCV, LVV, HCV, AV),
+    id_cols = id  
+  )
+df_update_no_correction_adj_wide <- df_update_no_correction_adj %>%
+  pivot_wider(
+    names_from = c(scanner, segmentation),
+    values_from = c(TIV, TGMV, TWMV, TCV, LVV, HCV, AV),
+    id_cols = id  
+  )
+
+# store wide dfs in a list
+update_wide_dfs <- list(df_update_wide = df_update_wide, df_update_adj_wide = df_update_adj_wide, 
+                 df_update_no_correction_wide = df_update_no_correction_wide, df_update_no_correction_adj_wide = df_update_no_correction_adj_wide)
+
+# produce dfs without NAs for pairise t-tests
+update_pairwise_dfs <- map(
+  update_dfs,
+  ~ .x %>%
+    group_by(id) %>%
+    filter(any(scanner == "SKYRA") & any(scanner == "VERIO")) %>%
+    ungroup())
+
+# prepare a results df to be filled
+update_lme_icc_res <- data.frame(matrix(ncol = 61, nrow = 7))
+colnames(update_lme_icc_res) <- c("ROI", paste0(rep(paste0(rep(paste0(rep(c("id_var", "scanner_var", "segmentation_var", "resdiual_var", "ICC"), each = 3), 
+                                       c("", "_lower_95_CI", "_upper_95_CI")), each = 2), c("", "_no_correction")), times = 2), 
+                                       rep(c("", "_adj"), each = 30)))
+update_lme_icc_res$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
+
+# formula for bootstrapped CIs for ICC
+icc_ci <- function(fit) {
+  variances <- as.data.frame(VarCorr(fit))
+  id_var = variances[variances$grp == "id", "vcov"]
+  scan_var = variances[variances$grp == "scanner", "vcov"]
+  seg_var = variances[variances$grp == "segmentation", "vcov"] 
+  residual_var = variances[variances$grp == "Residual", "vcov"]
+  icc = id_var / (id_var + scan_var + seg_var + residual_var)
+  c(id_var, scan_var, seg_var, residual_var, icc)
+}
+
+# calculate LMEs
+# iterate over outcomes
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
+  # iterate over dfs
+  for (df_name in names(update_dfs)){
+    df <- update_dfs[[df_name]] 
+    suffix <- substring(df_name, 10)
+    # remove SKYRA-recon6 rows if outcome is TIV (uninformative compared to VERIO-recon6)
+    if (outcome == "TIV"){
+      df <- df[!(df$scanner == "SKYRA" & df$segmentation == "recon6"),]
+    }
+    # create outcome specific LME formula
+    formula <- as.formula(paste0(outcome, " ~ (1|id) + (1|scanner) + (1|segmentation)"))
+    # estimate model and bootstrap confidence intervals
+    res <- lmer(formula = formula, data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
+    variances <- as.data.frame(VarCorr(res))
+    lme_icc <- (variances[variances$grp == "id", "vcov"])/
+      (variances[variances$grp == "scanner", "vcov"] + variances[variances$grp == "id", "vcov"] + 
+         variances[variances$grp == "segmentation", "vcov"] + variances[variances$grp == "Residual", "vcov"])
+    boot_icc <- bootMer(res, FUN  = icc_ci, nsim = 1000, type = "parametric")
+    boot_res <- apply(boot_icc$t, 2, quantile, probs = c(0.025, 0.975))
+    # store the results in the appropriate columns (unadjusted/adjusted data)
+    update_lme_icc_res[update_lme_icc_res$ROI == outcome, paste0(c("id_var", "scanner_var", "segmentation_var", "resdiual_var"), suffix)] <- 
+      c(variances[variances$grp == "id", "vcov"], variances[variances$grp == "scanner", "vcov"], 
+        variances[variances$grp == "segmentation", "vcov"], variances[variances$grp == "Residual", "vcov"])
+    update_lme_icc_res[update_lme_icc_res$ROI == outcome, paste0("ICC", suffix)] <- lme_icc
+    update_lme_icc_res[update_lme_icc_res$ROI == outcome, paste0(paste0(rep(c("id_var", "scanner_var", "segmentation_var", "resdiual_var", "ICC"),
+                                                              each = 2), c("_lower_95_CI", "_upper_95_CI")), suffix)] <- as.vector(boot_res)
+  }
+}
+
+############ Section 1.2: Calculation of PDs #######################
+# prepare a list to store the pd_matrices
+update_pd_matrices <- list()
+# iterate over ROIs
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
+  # iterate over datasets
+  for (df_name in names(update_wide_dfs)){
+    df <- update_wide_dfs[[df_name]]
+    suffix <- substr(df_name,10,nchar(df_name)-5)
+    # drop the SKYRA-recon6 TIV col
+    df$TIV_SKYRA_recon6 <- NULL
+    # get names of relevant cols
+    roi_cols <- grep(outcome, colnames(df), value = TRUE)
+    # initialize empty matrix
+    mean_pd_mat <- matrix(
+      NA_real_,
+      nrow = length(roi_cols),
+      ncol = length(roi_cols),
+      dimnames = list(roi_cols, roi_cols)
+    )
+    # fill upper triangle
+    for (i in seq_along(roi_cols)) {
+      for (j in seq_along(roi_cols)) {
+        if (i < j) {
+          # extract all values in the 2 relevant cols
+          col1 <- df[[roi_cols[i]]]
+          col2 <- df[[roi_cols[j]]]
+          # calculate a vector of PDs
+          # a negative value indicates that the values of the batch given by the rowname is smaller 
+          pd <- (2 * (col1 - col2)) / (abs(col1) + abs(col2))
+          # calculate the mean PD between the two batches (NAs exist because 5 participants were not scanned on both scanners)
+          mean_pd_mat[i, j] <- mean(pd, na.rm = TRUE)
+        }
+      }
+    }
+    # mirror the inverse to lower triangle
+    mean_pd_mat[lower.tri(mean_pd_mat)] <- t(mean_pd_mat)[lower.tri(mean_pd_mat)] * (-1)
+    # turn into percentage values
+    mean_pd_mat <- mean_pd_mat*100
+    # save variables to list
+    update_pd_matrices[[paste0(outcome, "_mean_pd_mat",suffix)]] <- mean_pd_mat
+  }
+}
+
+# prepare a results df to be filled
+update_anova_res <- data.frame(matrix(ncol = 25, nrow = 7))
+colnames(update_anova_res) <- c("ROI", paste0(rep(c("DFn",  "DFd",  "F",  "p",  "p<.05",  "ges"), times = 4), 
+                                       rep(c("", "_adj", "_no_correction", "_no_correction_adj"), each = 6)))
+update_anova_res$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
+#prepare list to store pairwise comparisons
+update_pwcs <- list()
+# iterate over ROIs
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
+  # iterate over datasets
+  for (df_name in names(update_dfs)){
+    df <- update_dfs[[df_name]]
+    suffix <- substring(df_name, 10)
+    pairwise_df <- update_pairwise_dfs[[df_name]]
+    # remove SKYRA-recon6 rows if outcome is TIV (uninformative compared to VERIO-recon6)
+    if (outcome == "TIV"){
+      df <- df[!(df$scanner == "SKYRA" & df$segmentation == "recon6"),]
+      pairwise_df <- pairwise_df[!(pairwise_df$scanner == "SKYRA" & pairwise_df$segmentation == "recon6"),]
+    }
+    res.aov <- anova_test(data = df, dv = outcome, wid = id, within = SITE)
+    table <- get_anova_table(res.aov)
+    update_anova_res[update_anova_res$ROI == outcome, paste0(c("DFn",  "DFd",  "F",  "p",  "p<.05",  "ges"), suffix)] <- as.data.frame(table)[1,2:7]
+    # perform pairwise comparisons of the individual scanner-segmentation comparisons
+    formula <- as.formula(paste0(outcome, " ~ SITE"))
+    pwc <- pairwise_df %>%
+      pairwise_t_test(
+        formula = formula, paired = TRUE, id = "id",
+        p.adjust.method = "hommel"
+      )
+    update_pwcs[[paste0(outcome, "_pwc", suffix)]] <- pwc
+  }
+}
+
+# prepare a results df to be filled
+update_iced_res <- data.frame(matrix(ncol = 85, nrow = 7))
+parameters <- c("obsvar", "truevar", "SKYRAvar",  "VERIOvar", "samsegvar", "recon6var", "recon7var", "catvar",
+                "VERIOmean",  "recon6mean", "recon7mean", "catmean", "truemean")
+col_names <- c(parameters, paste0(rep(c("ICC_SKYRA_", "ICC_VERIO_"), each = 4), rep(c("samseg", "recon6", "recon7", "cat"), times = 2))) 
+                
+colnames(update_iced_res) <- c("ROI", paste0(rep(col_names, times = 4), rep(c("", "_adj", "_no_correction", "_no_correction_adj"), each = 21)))
+update_iced_res$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
+# iterate over ROIs
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
+  # create colname vectors to adapt the model to the respective ROI
+  obsvars <- grep(outcome, colnames(df_update_wide), value = T)
+  skyravars <- grep("SKYRA", obsvars, value = T)
+  veriovars <- grep("VERIO", obsvars, value = T)
+  samsegvars <- grep("samseg", obsvars, value = T)
+  recon6vars <- grep("recon6", obsvars, value = T)
+  recon7vars <- grep("recon7", obsvars, value = T)
+  catvars <- grep("cat", obsvars, value = T)
+  # write the lavvan model
+  model <- glue("
+   ! regressions 
+   truth=~1.0*{obsvars[1]}
+   truth=~1.0*{obsvars[2]}
+   truth=~1.0*{obsvars[3]}
+   truth=~1.0*{obsvars[4]}
+   truth=~1.0*{obsvars[5]}
+   truth=~1.0*{obsvars[6]}
+   truth=~1.0*{obsvars[7]}
+   truth=~1.0*{obsvars[8]}
+   SKYRA=~1.0*{skyravars[1]}
+   SKYRA=~1.0*{skyravars[2]}
+   SKYRA=~1.0*{skyravars[3]}
+   SKYRA=~1.0*{skyravars[4]}
+   VERIO=~1.0*{veriovars[1]}
+   VERIO=~1.0*{veriovars[2]}
+   VERIO=~1.0*{veriovars[3]}
+   VERIO=~1.0*{veriovars[4]}
+   samseg=~1.0*{samsegvars[1]}
+   samseg=~1.0*{samsegvars[2]}
+   recon6=~1.0*{recon6vars[1]}
+   recon6=~1.0*{recon6vars[2]}
+   recon7=~1.0*{recon7vars[1]}
+   recon7=~1.0*{recon7vars[2]}
+   cat=~1.0*{catvars[1]}
+   cat=~1.0*{catvars[2]}
+! residuals, variances and covariances
+   {obsvars[1]} ~~ start(0.01)*obsvar*{obsvars[1]}
+   {obsvars[2]} ~~ start(0.01)*obsvar*{obsvars[2]}
+   {obsvars[3]} ~~ start(0.01)*obsvar*{obsvars[3]}
+   {obsvars[4]} ~~ start(0.01)*obsvar*{obsvars[4]}
+   {obsvars[5]} ~~ start(0.01)*obsvar*{obsvars[5]}
+   {obsvars[6]} ~~ start(0.01)*obsvar*{obsvars[6]}
+   {obsvars[7]} ~~ start(0.01)*obsvar*{obsvars[7]}
+   {obsvars[8]} ~~ start(0.01)*obsvar*{obsvars[8]}
+   truth ~~ start(0.1)*truevar*truth
+   SKYRA ~~ start(0.0001)*SKYRAvar*SKYRA
+   VERIO ~~ start(0.0001)*VERIOvar*VERIO
+   samseg ~~ start(0.001)*samsegvar*samseg
+   recon6 ~~ start(0.001)*recon6var*recon6
+   recon7 ~~ start(0.001)*recon7var*recon7
+   cat ~~ start(0.001)*catvar*cat
+   truth ~~ 0.0*SKYRA
+   truth ~~ 0.0*VERIO
+   truth ~~ 0.0*samseg
+   truth ~~ 0.0*recon6
+   truth ~~ 0.0*recon7
+   truth ~~ 0.0*cat
+   SKYRA ~~ 0.0*VERIO
+   SKYRA ~~ 0.0*samseg
+   SKYRA ~~ 0.0*recon6
+   SKYRA ~~ 0.0*recon7
+   SKYRA ~~ 0.0*cat
+   VERIO ~~ 0.0*samseg
+   VERIO ~~ 0.0*recon6
+   VERIO ~~ 0.0*recon7
+   VERIO ~~ 0.0*cat
+   samseg ~~ 0.0*recon6
+   samseg ~~ 0.0*recon7
+   samseg ~~ 0.0*cat
+   recon6 ~~ 0.0*recon7
+   recon6 ~~ 0.0*cat
+   recon7 ~~ 0.0*cat
+! means
+   # the means are relative to samseg-SKYRA
+   SKYRA~0*1;
+   samseg~0*1;
+   VERIO~VERIOmean*1
+   recon6~recon6mean*1
+   recon7~recon7mean*1
+   cat~catmean*1
+   truth~truemean*1
+   {obsvars[1]}~0*1;
+   {obsvars[2]}~0*1;
+   {obsvars[3]}~0*1;
+   {obsvars[4]}~0*1;
+   {obsvars[5]}~0*1;
+   {obsvars[6]}~0*1;
+   {obsvars[7]}~0*1;
+   {obsvars[8]}~0*1;
+                ")
+  # adapt model if the ROI is TIV (remove SKYRA-recon6)
+  if (outcome == "TIV"){
+    drop_lines <- c(
+      "TIV_SKYRA_recon6~0*1;",
+      "TIV_SKYRA_recon6 ~~ obsvar*TIV_SKYRA_recon6",
+      "SKYRA=~1.0*TIV_SKYRA_recon6",
+      "truth=~1.0*TIV_SKYRA_recon6",
+      "recon6=~1.0*TIV_SKYRA_recon6")
+    pattern <- paste0(
+      "(?m)^\\s*(",
+      paste0("\\Q", drop_lines, "\\E", collapse = "|"),
+      ")\\s*$")
+    model <- str_remove_all(model, pattern)
+  }
+  # iterate over datasets
+  for (df_name in names(update_wide_dfs)){
+    df <- update_wide_dfs[[df_name]]
+    suffix <- substr(df_name,10,nchar(df_name)-5)
+    # estimate the lavaan model
+    fit <- lavaan(model = model, data=df, fixed.x=FALSE, missing="FIML", control = list(iter.max = 5000))
+    pe <- parameterEstimates(fit)
+    pe <- pe[!duplicated(pe$label, na.rm = T), ]
+    # set negative variances to 0 (might occur if true variance is very close to 0)
+    pe$est[pe$est < 0 & grepl("var", pe$label)] <- 0
+    # prepare iced icc list
+    iced_iccs <- list(
+      SKYRA_samseg = NULL,
+      SKYRA_recon6 = NULL,
+      SKYRA_recon7 = NULL,
+      SKYRA_cat = NULL,
+      VERIO_samseg = NULL,
+      VERIO_recon6 = NULL,
+      VERIO_recon7 = NULL,
+      VERIO_cat = NULL
+    )
+    # calculate ICED-ICC for each batch
+    for (scanner in c("SKYRA", "VERIO")) {
+      for (segmentation in c("samseg", "recon6", "recon7", "cat")){
+       icc <- pe[pe$label == "truevar", "est"] / (pe[pe$label == "truevar", "est"] + pe[pe$label == "obsvar", "est"] +
+                                                    pe[pe$label == paste0(scanner, "var"), "est"] + pe[pe$label == paste0(segmentation, "var"), "est"])
+       iced_iccs[[paste0(scanner, "_", segmentation)]] <- icc
+       }
+    }
+    # store the results
+    update_iced_res[update_iced_res$ROI == outcome, paste0(parameters, suffix)] <- pe[pe$label %in% parameters, "est"]
+    update_iced_res[update_iced_res$ROI == outcome, c(paste0("ICC_SKYRA_", c("samseg", "recon6", "recon7", "cat"), suffix), 
+                                        paste0("ICC_VERIO_", c("samseg", "recon6", "recon7", "cat"), suffix))] <- iced_iccs
+    # check if non-convergences occured (lavaan just gives starting values in this case)
+    if (!lavaan::lavInspect(fit, "converged")) {
+      update_iced_res[update_iced_res$ROI == outcome, paste0(parameters, suffix)] <- "uconverged"
+      update_iced_res[update_iced_res$ROI == outcome, c(paste0("ICC_SKYRA_", c("samseg", "recon6", "recon7", "cat"), suffix), 
+                      paste0("ICC_VERIO_", c("samseg", "recon6", "recon7", "cat"), suffix))] <- "unconverged"
+    }
+  }
+}
+
+showtext_auto()
+update_ba_plots <- list()
+update_ba_plot_comparisons <- list()
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
+  # iterate over datasets
+  for (df_name in names(update_wide_dfs)){
+    plot_list <- list()
+    df <- update_wide_dfs[[df_name]]
+    suffix <- substring(df_name, 10)
+    cols <- grep(outcome, colnames(df), value = T)
+    # get all combinations of cols
+    combs <- combn(cols, 2, simplify = FALSE)
+    for (combination in combs){
+      plt <- bland.altman.plot(group1 = df[[combination[1]]], group2 = df[[combination[2]]], 
+                               graph.sys = "ggplot2", conf.int=.95, pch=19)
+      plt <- plt + labs(title = paste0(gsub("_", " ", combination[1]), " vs. ", gsub("_", " ", combination[2]))) + theme_bw(base_family = "garamond") + 
+        theme(plot.title = element_text(hjust = 0.5, size = 12))
+      plot_list[[paste0(combination[1], " vs. ", combination[2])]] <- plt
+    }
+    plots <- wrap_plots(plot_list, ncol(6))
+    update_ba_plots[[paste0(outcome, suffix)]] <- plots
+    update_ba_plots[[paste0(outcome, suffix, "_indiv_plots")]] <- plot_list
+  }
+  for (i in seq(1, 28, by = 4)) {
+    plots_left  <- update_ba_plots[[paste0(outcome, "_wide_indiv_plots")]][i:(i+3)]
+    plots_right <- update_ba_plots[[paste0(outcome, "_adj_wide_indiv_plots")]][i:(i+3)]
+    left_col  <- wrap_plots(plots_left, ncol = 1)
+    right_col <- wrap_plots(plots_right, ncol = 1)
+    combined <- wrap_plots(left_col, right_col, ncol = 2) + plot_annotation(title = paste0(outcome, " before (left) and after (right) harmonization"), 
+                                                                            theme = theme(plot.title = element_text(hjust = 0.5)))
+    update_ba_plot_comparisons[[paste0(outcome, (((i-1)/4)+1))]] <- combined
+  }
+}
+
+############ Section 3.3 Scanner update WMHV ################
+df_update_wmhv <- read.csv("https://osf.io/mxde5/?action=download", sep = ",", header=TRUE)
+df_update_wmhv_wide <- df_update_wmhv[,c("id", "SITE", "WMHV_norm", "WMHV_adj")] %>%
+  pivot_wider(
+    names_from = SITE,
+    values_from = c(WMHV_norm, WMHV_adj)
+  )
+############ Section 3.3.1: Calculation of ICCs ####################### 
+
+# add row to update_lme_icc_res
+update_lme_icc_res[nrow(update_lme_icc_res) + 1, "ROI"] <- "WMHV"
+
+# formula for bootstrapped CIs for ICC
+icc_ci <- function(fit) {
+  variances <- as.data.frame(VarCorr(fit))
+  id_var = variances[variances$grp == "id", "vcov"]
+  scan_var = variances[variances$grp == "scanner", "vcov"]
+  residual_var = variances[variances$grp == "Residual", "vcov"]
+  icc = id_var / (id_var + scan_var + residual_var)
+  c(id_var, scan_var, residual_var, icc)
+}
+
+# calculate LMEs
+# iterate over outcomes
+for (outcome in c("WMHV_norm", "WMHV_adj")) {
+  # get suffix
+  suffix <- ""
+  if (outcome == "WMHV_adj"){
+    suffix <- "_adj"
+  }
+  formula <- as.formula(paste0(outcome, " ~ (1|id) + (1|scanner)"))
+  # estimate model and bootstrap confidence intervals
+  res <- lmer(formula = formula, data = df_update_wmhv, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
+  variances <- as.data.frame(VarCorr(res))
+  lme_icc <- (variances[variances$grp == "id", "vcov"])/
+    (variances[variances$grp == "scanner", "vcov"] + variances[variances$grp == "id", "vcov"] + 
+       variances[variances$grp == "Residual", "vcov"])
+  boot_icc <- bootMer(res, FUN  = icc_ci, nsim = 1000, type = "parametric")
+  boot_res <- apply(boot_icc$t, 2, quantile, probs = c(0.025, 0.975))
+  # store the results in the appropriate columns (unadjusted/adjusted data)
+  update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", paste0(c("id_var", "scanner_var", "resdiual_var"), suffix)] <- 
+    c(variances[variances$grp == "id", "vcov"], variances[variances$grp == "scanner", "vcov"], 
+      variances[variances$grp == "Residual", "vcov"])
+  update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", paste0("ICC", suffix)] <- lme_icc
+  update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", paste0(paste0(rep(c("id_var", "scanner_var", "resdiual_var", "ICC"),
+                                                                          each = 2), c("_lower_95_CI", "_upper_95_CI")), suffix)] <- as.vector(boot_res)
+}
+
+############ Section 3.3.2: Calculation of PDs #######################
+
+# iterate over ROIs
+for (outcome in c("WMHV_norm", "WMHV_adj")) {
+  suffix <- ""
+  if (outcome == "WMHV_adj"){
+    suffix <- "_adj"
+  }  
+  # get names of relevant cols
+  roi_cols <- grep(outcome, colnames(df_update_wmhv_wide), value = TRUE)
+  # initialize empty matrix
+  mean_pd_mat <- matrix(
+    NA_real_,
+    nrow = length(roi_cols),
+    ncol = length(roi_cols),
+    dimnames = list(roi_cols, roi_cols)
+  )
+  # fill upper triangle
+  for (i in seq_along(roi_cols)) {
+    for (j in seq_along(roi_cols)) {
+      if (i < j) {
+        # extract all values in the 2 relevant cols
+        col1 <- df_update_wmhv_wide[[roi_cols[i]]]
+        col2 <- df_update_wmhv_wide[[roi_cols[j]]]
+        # calculate a vector of PDs
+        # a negative value indicates that the values of the batch given by the rowname is smaller 
+        pd <- (2 * (col1 - col2)) / (abs(col1) + abs(col2))
+        # calculate the mean PD between the two batches (NAs exist because 5 participants were not scanned on both scanners)
+        mean_pd_mat[i, j] <- mean(pd, na.rm = TRUE)
+      }
+    }
+  }
+  # mirror the inverse to lower triangle
+  mean_pd_mat[lower.tri(mean_pd_mat)] <- t(mean_pd_mat)[lower.tri(mean_pd_mat)] * (-1)
+  # turn into percentage values
+  mean_pd_mat <- mean_pd_mat*100
+  # save variables to list
+  update_pd_matrices[[paste0(outcome, "_mean_pd_mat",suffix)]] <- mean_pd_mat
+}
+
+
+############ Section 3.3.3: Calculation of pairwise t-tests #######################
+
+# iterate over ROIs
+for (outcome in c("WMHV_norm", "WMHV_adj")) {
+  suffix <- ""
+  if (outcome == "WMHV_adj"){
+    suffix <- "_adj"
+  }  
+  # perform pairwise comparisons 
+  formula <- as.formula(paste0(outcome, " ~ SITE"))
+  pwc <- df_update_wmhv %>%
+    group_by(id) %>%
+    filter(n() == 2) %>%
+    ungroup() %>%
+    pairwise_t_test(
+      formula = formula, paired = TRUE, id = "id"
+    )
+  update_pwcs[[paste0(outcome, "_pwc", suffix)]] <- pwc
+}
+############ Section 3.3.4 Bland-Altman plots ################
+for (outcome in c("WMHV_norm", "WMHV_adj")) {
+  cols <- grep(outcome, colnames(df_update_wmhv_wide), value = T)
+  # add a vertical line to show the size of 1 SD
+  # determine the x-coordinate (should be left of the smallest value)
+  x_coord = min(rowMeans(df_update_wmhv_wide[,cols]), na.rm = T)
+  # determine the y-coordinates 
+  sd_val <- sd(unlist(df_update_wmhv_wide[cols]), na.rm = TRUE)
+  y_coord_a <- sd_val/2 
+  y_coord_b <- -sd_val/2
+  plt <- bland.altman.plot(group1 = df_update_wmhv_wide[[cols[1]]], group2 = df_update_wmhv_wide[[cols[2]]], 
+                           graph.sys = "ggplot2", conf.int=.95, pch=19)
+  plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme(plot.title = element_text(size = 12), base_family = "garamond")
+  # add line to idicate size of SD
+  plt <- plt + 
+    geom_segment(
+      x = x_coord, xend = x_coord,
+      y = y_coord_a, yend = y_coord_b,
+      colour = "blue",
+      linewidth = 1
+    )
+  update_ba_plots[[paste0(outcome)]] <- plt
+}
+unharm_plot <- update_ba_plots[["WMHV_norm"]] + labs(title = paste0("WMHV SKYRA vs. WMHV VERIO unharmonized")) 
+nh_plot <- update_ba_plots[["WMHV_adj"]] + labs(title = paste0("WMHV SKYRA vs. WMHV VERIO harmonized")) 
+plots <- wrap_plots(list(unharm_plot, nh_plot), nrow = 2, )
+update_ba_plot_comparisons[["WMHV"]] <- plots 
+
+```
+
+```{r update_prep}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+# set font for figures
+library(showtext)
+library(ggplot2)
+font_add_google("Fira Sans", "firasans")
+showtext_auto()
+theme_set(theme_classic(base_family = "firasans", base_size = 11))
+
+update_lme_icc_res_no_wmhv <- update_lme_icc_res[update_lme_icc_res$ROI != "WMHV",]
+pd_mat <- update_pd_matrices
+pd_sub2 <- data.frame(matrix(nrow = 7, ncol = 5))
+colnames(pd_sub2) <- c("ROI", "pre", "post", "mean_pd_pre", "mean_pd_post")
+pd_sub2$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
+  pre <- pd_mat[[paste0(outcome, "_mean_pd_mat")]]
+  post <- pd_mat[[paste0(outcome, "_mean_pd_mat_adj")]]
+  n_comparisons <- sum(1:(ncol(pre)-1))
+  n_exceeding_pre <- length(which(pre >2)) # enumerate the comparisons with a PD > 2%
+  n_exceeding_post <- length(which(post >2)) # enumerate the comparisons with a PD > 2%
+  pd_sub2[pd_sub2$ROI == outcome, "pre"] <- paste0(n_exceeding_pre, "/", n_comparisons)
+  pd_sub2[pd_sub2$ROI == outcome, "post"] <- paste0(n_exceeding_post, "/", n_comparisons)
+  pd_sub2[pd_sub2$ROI == outcome, "mean_pd_pre"] <- mean(abs(pre), na.rm = T)
+  pd_sub2[pd_sub2$ROI == outcome, "mean_pd_post"] <- mean(abs(post), na.rm = T)
+}
+pd_sub2$mean_pd_pre <- round(pd_sub2$mean_pd_pre, digits = 2)
+pd_sub2$mean_pd_post <- round(pd_sub2$mean_pd_post, digits = 3)
+anovas <- update_anova_res
+pwcs <- update_pwcs
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
+  pre <- pwcs[[paste0(outcome, "_pwc")]]
+  post <- pwcs[[paste0(outcome, "_pwc_adj")]]
+  n_pwcs <- nrow(pre)
+  n_sig_pre <- length(which(pre$p.adj.signif != "ns"))
+  n_sig_post <- length(which(post$p.adj.signif != "ns"))
+  anovas[anovas$ROI == outcome, "n_sig_pre"] <- paste0(n_sig_pre, "/", n_pwcs)
+  anovas[anovas$ROI == outcome, "n_sig_post"] <- paste0(n_sig_post, "/", n_pwcs)
+}
+anovas$p <- ifelse(anovas$p < 0.001, formatC(anovas$p, format = "e", digits = 2), anovas$p)
+anovas$p_adj <- ifelse(anovas$p_adj < 0.001, formatC(anovas$p_adj, format = "e", digits = 2), anovas$p_adj)
+iced <- update_iced_res
+iced <- iced[iced$ROI != "TIV",]
+iced[, 2:ncol(iced)] <- apply(iced[, 2:ncol(iced)], 2, function(x) ifelse(abs(as.numeric(x)) < 0.001 & as.numeric(x) != 0, formatC(as.numeric(x), format = "e", digits = 0), round(as.numeric(x), digits = 3)))
+```
+
+```{r}
+#| label: tbl-update-icc
+#| tbl-cap: "ICCs before and after harmonization in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+df2 <- update_lme_icc_res_no_wmhv %>%
+  mutate(
+    ICC_CI = sprintf("%.2f (%.2f, %.2f)", ICC, ICC_lower_95_CI, ICC_upper_95_CI),
+    ICC_adj_CI = sprintf("%.2f (%.2f, %.2f)", ICC_adj, ICC_lower_95_CI_adj, ICC_upper_95_CI_adj))
+
+df2[, c("ROI", "ICC_CI", "ICC_adj_CI")] |>
+  kbl(
+    col.names = c(
+      "ROI",
+      "ICC (95% CI)",
+      "ICC (95% CI) harm."
+    ),
+    booktabs = TRUE,
+    linesep  = "",
+    align    = "lccc"
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  column_spec(1, width = "3cm") |>
+  column_spec(2:4, width = "4cm") |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; ICC = intraclass correlation coefficient; ",
+      "CI = confidence interval; harm. = harmonized with neuroHarmonize; ",
+      "TIV = total intracranial volume; ",
+      "TGMV = total grey matter volume; TWMV = total white matter volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricles volume; ",
+      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
+    ),
+    general_title = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: tbl-update-signif
+#| tbl-cap: "Statistical significance of differences before and after harmonization in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+anovas[, c("ROI", "p", "p_adj", "n_sig_pre", "n_sig_post")] |>
+  kbl(
+    col.names = c(
+      "ROI",
+      "p-value",
+      "p-value harm.",
+      "sig. PWCs",
+      "sig. PWCs harm."
+    ),
+    booktabs = TRUE,
+    linesep  = "",
+    align    = c("l", "r", "r", "r", "r")
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; p-value = p-value from ANOVA; harm. = harmonized with neuroHarmonize; ",
+      "sig. PWCs = share of significant pairwise comparisons; ",
+      "TIV = total intracranial volume; TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: tbl-update-pd
+#| tbl-cap: "Percent differences before and after harmonization in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+pd_sub2 |>
+  kbl(
+    col.names = c(
+      "ROI",
+      "PD > 2%",
+      "PD > 2% harm.",
+      "mean PD",
+      "mean PD harm."
+    ),
+    booktabs = TRUE,
+    linesep  = "",
+    align    = c("l", "r", "r", "r", "r") 
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; PD = percent difference; harm. = harmonized with neuroHarmonize; ",
+      "TIV = total intracranial volume; TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: fig-update
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in cross-sectional data \\newline TIV = Total Intracranial Volume; TGMV = Total Grey Matter Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+library(tidyverse)
+library(MetBrewer)
+library(patchwork)
+library(showtext)
+showtext_auto()
+font_add_google("EB Garamond")
+colors = met.brewer(name="Java", n=5, type="discrete")
+colors <- colors[c(1,2,4,5)]
+# load the unadjusted data from the scanner update study 
+df_update <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update.csv")
+# break each scanner-segmentation combination down to a scanner and a segmentation variable
+df_update$scanner <- ifelse(grepl("VER", df_update$SITE), "VERIO", "SKYRA")
+df_update <- df_update %>%
+  mutate(segmentation = case_when(
+    grepl("samseg", SITE) ~ "samseg",
+    grepl("cat", SITE) ~ "cat",
+    grepl("recon6", SITE) ~ "recon6",
+    grepl("recon7", SITE) ~ "recon7"
+  ))
+# for unscaled age data
+QA <- read.csv("/data/pt_nro186_lifeupdate/Data/FREESURFER/QA/QA_list_short.csv")
+# remove empty rows
+# remove empty rows
+QA <- QA[1:121,]
+# create id col, add 0 that might got lost at the beginning/end, remove ., add "sub-"
+# first add 0 lost at the end
+QA$ID <- ifelse(nchar(sub(".*\\.", "", QA$ID)) == 1, paste0(QA$ID, "0"), QA$ID)
+QA$id <- ifelse(nchar(QA$ID) != 7, gsub("\\.", "", paste0("sub-" ,QA$ID)), gsub("\\.", "", paste0("sub-", "0", QA$ID)))
+
+# trim trailing spaces
+QA$id <- trimws(QA$id)
+QA$correction.necessary <- ifelse(is.na(QA$correction.necessary), 0, QA$correction.necessary)
+# rename German colnames
+QA <- QA %>%
+  rename(
+    "age" = "Alter_aktuell",
+    "gender" = "Geschlecht"
+  )
+df_update <- df_update %>%
+  select(id, TIV, TGMV, TWMV, TCV, LVV, HCV, AV, SITE) %>%
+  left_join(QA[,c("id", "correction.necessary", "age", "gender")], by = "id")
+
+# load the harmonized data from the scanner update study 
+df_update_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update_adj.csv", col.names = colnames(df_update)[2:8])
+# fill in the missing data from the unadjusted df (these cols must not be included during harmonization) 
+df_update_adj[,c("id", "SITE", "age", "gender")] <- df_update[,c("id", "SITE", "age", "gender")]
+df_update$SITE <- gsub("_", " ", df_update$SITE)
+df_update_adj$SITE <- gsub("_", " ", df_update_adj$SITE)
+df_update$SITE <- factor(df_update$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
+df_update_adj$SITE <- factor(df_update_adj$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
+df_update_wmhv <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update.csv")
+df_update_wmhv_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update_adj.csv")
+df_update_wmhv$SITE <- ifelse(df_update_wmhv$scanner == "skyra", "SKYRA samseg", "VERIO samseg")
+df_update_wmhv$SITE <- factor(df_update_wmhv$SITE, levels = c("SKYRA samseg", "VERIO samseg"))
+df_update_wmhv_adj[,c("id", "SITE")] <- df_update_wmhv[,c("id", "SITE")]
+df_update_wmhv$WMHV <- df_update_wmhv$WMHV_norm
+df_update_wmhv_adj$WMHV <- df_update_wmhv_adj$X..WMHV_norm  
+plots <- list()
+comparisons <- list()
+dfs <- list(df_update = df_update, df_update_adj = df_update_adj)
+wmhv_dfs <- list(df_update_wmhv = df_update_wmhv, df_update_wmhv_adj = df_update_wmhv_adj)
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
+  for (name in names(dfs)){
+    df <- dfs[[name]]
+    suffix <- ""
+    y_axis_title <- outcome
+    if (grepl("adj", name)){
+      suffix <- "_adj"
+      y_axis_title <- paste0(outcome, " harmonized")
+    }
+    ordered_ids <- df %>%
+      group_by(id) %>%
+      summarise(mean_val = mean(.data[[outcome]], na.rm = TRUE)) %>%
+      arrange(mean_val) %>%
+      pull(id)
+    df$id <- factor(df$id, levels = ordered_ids)
+    plt <- ggplot(data = df, aes(x = factor(id), y = .data[[outcome]], color = SITE, group = SITE, shape = SITE)) +
+      geom_point(size = 0.75, alpha = 0.85, stroke = 0.4) +
+      scale_shape_manual(values = c(16, 1, 16, 1, 16, 1, 16, 1)) +
+      theme_classic(base_family = "garamond") +
+      guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) + 
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
+            axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
+            legend.spacing.y = unit(0.0, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
+      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.5, "cm"), legend.key.spacing.y = unit(0.0, "cm"), legend.key.spacing.x = unit(0, "cm"),
+      axis.line.x = element_line(linewidth = 0.3), axis.line.y = element_line(linewidth = 0.3)) +
+      ylab(y_axis_title) + scale_color_manual(values = rep(colors, each = 2))
+    if (grepl("adj", name)){
+      plt <- plt + theme(axis.text.y  = element_blank(), axis.ticks.y = element_blank())
+    }
+    plots[[paste0(outcome, suffix)]] <- plt
+  }
+  y_range <- range(c(plots[[outcome]]$data[[outcome]], plots[[paste0(outcome, "_adj")]]$data[[outcome]]), na.rm = TRUE)
+  plots[[outcome]] <- plots[[outcome]] + coord_cartesian(ylim = y_range)
+  if(outcome %in% c("TGMV", "TCV", "HCV")){
+    plots[[outcome]] <- plots[[outcome]] + labs(x = "mean of measurements") + theme(axis.title.x = element_text(size = 5))
+  }
+  plots[[paste0(outcome, "_adj")]] <- plots[[paste0(outcome, "_adj")]] + coord_cartesian(ylim = y_range)
+  comparison <- wrap_plots(list(plots[[outcome]], plots[[paste0(outcome, "_adj")]]), nrow = 1) + plot_layout(guides = "collect") & theme(legend.position = "right")
+  comparisons[[outcome]] <- comparison
+}
+for (name in names(wmhv_dfs)){
+  df <- wmhv_dfs[[name]]
+  suffix <- ""
+  y_axis_title <- "WMHV"
+  if (grepl("adj", name)){
+    suffix <- "_adj"
+    y_axis_title <- paste0("WMHV harmonized")
+  }
+  ordered_ids <- df %>%
+    group_by(id) %>%
+    summarise(mean_val = mean(.data[["WMHV"]], na.rm = TRUE)) %>%
+    arrange(mean_val) %>%
+    pull(id)
+  df$id <- factor(df$id, levels = ordered_ids)
+  plt <- ggplot(data = df, aes(x = factor(id), y = .data[["WMHV"]], color = SITE, group = SITE, shape = SITE)) +
+    geom_point(size = 0.75, alpha = 0.85, stroke = 0.4) +
+    scale_shape_manual(values = c(16, 1)) +
+    theme_classic(base_family = "garamond") +
+    guides(color = guide_legend(ncol = 4, override.aes = list(size = 1.6)), shape = guide_legend(ncol = 4, override.aes = list(size = 1.6))) +
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.y = element_text(size = 4), 
+            axis.title.y = element_text(size = 5), legend.text = element_text(size = 5, margin = margin(r = 8)), legend.title = element_blank(), 
+            legend.spacing.y = unit(0.0, "cm"), legend.spacing.x = unit(0.1, "cm"), legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(0, "cm"),
+      legend.key.width = unit(0.5, "cm"), legend.key.height = unit(0.5, "cm"), legend.key.spacing.y = unit(0.0, "cm"), legend.key.spacing.x = unit(0, "cm"),
+      axis.line.x = element_line(linewidth = 0.3), axis.line.y = element_line(linewidth = 0.3)) +
+    ylab(y_axis_title) + scale_color_manual(values = rep(colors[3], 2))
+  if (grepl("adj", name)){
+    plt <- plt + theme(axis.text.y  = element_blank(), axis.ticks.y = element_blank())
+  }
+  plots[[paste0("WMHV", suffix)]] <- plt
+}
+y_range <- range(c(plots[["WMHV"]]$data[["WMHV"]], plots[[paste0("WMHV", "_adj")]]$data[["WMHV"]]), na.rm = TRUE)
+plots[["WMHV"]] <- plots[["WMHV"]] + coord_cartesian(ylim = y_range) + labs(x = "mean of measurements") + theme(axis.title.x = element_text(size = 5))
+plots[[paste0("WMHV", "_adj")]] <- plots[[paste0("WMHV", "_adj")]] + coord_cartesian(ylim = y_range)
+comparison <- wrap_plots(list(plots[["WMHV"]], plots[[paste0("WMHV", "_adj")]]), nrow = 1) + plot_layout(guides = "collect") & theme(legend.position = "right")
+comparisons[["WMHV"]] <- comparison
+
+legend_only_plot <- ggplot() + 
+  theme_void() +
+  annotation_custom(cowplot::get_legend(comparisons[[1]]))
+p_combined <- wrap_plots(comparisons[[1]], comparisons[[2]], 
+                         nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
+  theme(legend.position = "none", plot.margin = margin(4,4,4,4))
+cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.1))
+```
+
+```{r}
+#| label: fig-update2
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in cross-sectional data \\newline TWMV = Total White Matter Volume; TCV = Total Cortical Volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+p_combined <- wrap_plots(comparisons[[3]], comparisons[[4]],
+                         nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
+  theme(legend.position = "none", , plot.margin = margin(4,4,4,4))
+cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.1))
+```
+
+```{r}
+#| label: fig-update3
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in cross-sectional data \\newline LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+p_combined <- wrap_plots(comparisons[[5]], comparisons[[6]], 
+                         nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
+  theme(legend.position = "none", , plot.margin = margin(4,4,4,4))
+cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.1))
+```
+
+```{r}
+#| label: fig-update4
+#| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in cross-sectional data \\newline AV = bilateral amygdala volume; WMHV = white matter hyperintensity volume"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+p_combined <- wrap_plots(comparisons[[7]], comparisons[[8]], 
+                         nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
+  theme(legend.position = "none", , plot.margin = margin(4,4,4,4))
+cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.1))
+```
+
+
+The agreement between WMHV using the same segmentation method on different MRI machines in the cross-sectional data showed an ICC of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3)`) before and of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3)`) after harmonization.
+Measurements on the SKYRA were on average `r round(update_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(update_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of neuroHarmonize.
+A paired t-test of the batches was significant prior to harmonization (p-value = `r formatC(update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t-statistic = `r formatC(update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; df = `r update_pwcs$WMHV_norm_pwc$df`) but ceased to be so afterwards (p-value = `r update_pwcs$WMHV_adj_pwc_adj$p`; t-statistic = `r formatC(update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; df = `r update_pwcs$WMHV_adj_pwc_adj$df`).
+
+# Reproduction of supplementary tables
+
+```{r scanner_software_comp}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+scanner_software_comp <- data.frame(matrix(nrow = 7, ncol = 3))
+colnames(scanner_software_comp) <- c("ROI", "within_scanner_diff", "within_software_diff")
+scanner_software_comp$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
+# start with scanner update
+pd <- update_pd_matrices
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
+  mat <- pd[[paste0(outcome,"_mean_pd_mat")]]
+  transf_mat <- abs(mat) %>%
+    as.data.frame() %>%
+    mutate(row_name = rownames(.)) %>%
+    pivot_longer(-row_name, names_to = "col_name", values_to = "value") %>%
+    filter(row_name != col_name) %>%
+    mutate(pair_id = map2_chr(row_name, col_name, ~ paste(sort(c(.x, .y)), collapse = "_"))) %>%
+    distinct(pair_id, .keep_all = TRUE) %>%
+    separate(row_name, into = c("metric1","scanner1","suffix1"), sep = "_") %>%
+    separate(col_name, into = c("metric2","scanner2","suffix2"), sep = "_") 
+  scanner_software_comp[scanner_software_comp$ROI == outcome, "within_scanner_diff"] <- transf_mat %>%
+    filter(scanner1 == scanner2) %>%
+    filter(suffix1 != suffix2) %>%
+    summarise(mean_value = mean(value, na.rm = TRUE))
+  scanner_software_comp[scanner_software_comp$ROI == outcome, "within_software_diff"] <- transf_mat %>%
+    filter(scanner1 != scanner2) %>%
+    filter(suffix1 == suffix2) %>%
+    summarise(mean_value = mean(value, na.rm = TRUE))
+}
+scanner_software_comp[,2:3] <- round(scanner_software_comp[,2:3], digits = 2)
+```
+
+```{r}
+#| label: tbl-between-within
+#| tbl-cap: "Average percent differences between softwares and between scanners in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+scanner_software_comp |>
+  kbl(
+    row.names = FALSE,
+    col.names = c("ROI",
+                  "between software", "between scanners"),
+    booktabs  = TRUE,
+    linesep   = "",
+    format    = "latex",
+    align     = c("l", "c", "c")
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; between software = average percent difference comparing two segmentations with different software of the same image;",
+      "between scanners = average percent difference comparing two segmentations with identical software of images from different scanners"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+::: landscape
+```{r}
+#| label: tbl-iced-icc
+#| tbl-cap: "ICED ICCs before and after harmonization in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+iced[, c(paste0(rep(c("ICC_SKYRA_cat", "ICC_VERIO_cat", "ICC_SKYRA_recon6", "ICC_VERIO_recon6", 
+                              "ICC_SKYRA_recon7", "ICC_VERIO_recon7", "ICC_SKYRA_samseg", "ICC_VERIO_samseg"), 
+                            each = 2), c("", "_adj")))] <- lapply(iced[, c(paste0(rep(c("ICC_SKYRA_cat", "ICC_VERIO_cat", "ICC_SKYRA_recon6", "ICC_VERIO_recon6", 
+                              "ICC_SKYRA_recon7", "ICC_VERIO_recon7", "ICC_SKYRA_samseg", "ICC_VERIO_samseg"), 
+                            each = 2), c("", "_adj")))], as.numeric)
+iced[, c(paste0(rep(c("ICC_SKYRA_cat", "ICC_VERIO_cat", "ICC_SKYRA_recon6", "ICC_VERIO_recon6", 
+                              "ICC_SKYRA_recon7", "ICC_VERIO_recon7", "ICC_SKYRA_samseg", "ICC_VERIO_samseg"), 
+                            each = 2), c("", "_adj")))] <- round(iced[, c(paste0(rep(c("ICC_SKYRA_cat", "ICC_VERIO_cat", "ICC_SKYRA_recon6", "ICC_VERIO_recon6", 
+                              "ICC_SKYRA_recon7", "ICC_VERIO_recon7", "ICC_SKYRA_samseg", "ICC_VERIO_samseg"), 
+                            each = 2), c("", "_adj")))], digits = 2)
+iced[, c("ROI", paste0(rep(c("ICC_SKYRA_cat", "ICC_VERIO_cat", "ICC_SKYRA_recon6", "ICC_VERIO_recon6", 
+                              "ICC_SKYRA_recon7", "ICC_VERIO_recon7", "ICC_SKYRA_samseg", "ICC_VERIO_samseg"), 
+                            each = 2), c("", "_adj")))] |>
+  kbl(
+    row.names = FALSE,
+    col.names = c("ROI",
+                  "ICC", "harm.", "ICC", "harm.",
+                  "ICC", "harm.", "ICC", "harm.",
+                  "ICC", "harm.", "ICC", "harm.",
+                  "ICC", "harm.", "ICC", "harm."),
+    booktabs  = TRUE,
+    linesep   = "",
+    align     = c("l", rep("c", 16))
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  add_header_above(c(
+    " "              = 1,
+    "SKYRA cat"      = 2,
+    "VERIO cat"      = 2,
+    "SKYRA recon6"   = 2,
+    "VERIO recon6"   = 2,
+    "SKYRA recon7"   = 2,
+    "VERIO recon7"   = 2,
+    "SKYRA samseg"   = 2,
+    "VERIO samseg"   = 2
+  )) |>
+  column_spec(1, border_right = TRUE) |>
+  column_spec(c(3, 5, 7, 9, 11, 13, 15), border_right = TRUE) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; ICC = intraclass correlation coefficient; harm. = harmonized ICC; ",
+      "TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: tbl-iced-variances
+#| tbl-cap: "ICED variances before and after harmonization in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+iced[, c("ROI", paste0(rep(c("truevar", "SKYRAvar", "VERIOvar", "catvar", "recon6var", "recon7var", "samsegvar", "obsvar"),
+                            each = 2), c("", "_adj")))] |>
+  kbl(
+    row.names = FALSE,
+    col.names = c("ROI",
+                  "var", "harm.", "var", "harm.",
+                  "var", "harm.", "var", "harm.",
+                  "var", "harm.", "var", "harm.",
+                  "var", "harm.", "var", "harm."),
+    booktabs  = TRUE,
+    linesep   = "",
+    align     = c("l", rep("c", 16))
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  add_header_above(c(
+    " "        = 1,
+    "true"  = 2,
+    "SKYRA"    = 2,
+    "VERIO"    = 2,
+    "cat"      = 2,
+    "recon6"   = 2,
+    "recon7"   = 2,
+    "samseg"   = 2,
+    "residual"   = 2
+  )) |>
+  column_spec(1, border_right = TRUE) |>
+  column_spec(c(3, 5, 7, 9, 11, 13, 15), border_right = TRUE) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; var = latent variable variance; harm. = harmonized latent variable variance; ",
+      "TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: tbl-iced-means
+#| tbl-cap: "ICED means before and after harmonization in cross-sectional data"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+iced[, c("ROI", paste0(rep(c("truemean", "VERIOmean", "catmean", "recon6mean", "recon7mean"),
+                            each = 2), c("", "_adj")))] |>
+  kbl(
+    row.names = FALSE,
+    col.names = c("ROI",
+                  "mean", "harm.", "mean", "harm.",
+                  "mean", "harm.", "mean", "harm.",
+                  "mean", "harm."),
+    booktabs  = TRUE,
+    linesep   = "",
+    align     = c("l", rep("c", 10))
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  add_header_above(c(
+    " "        = 1,
+    "true"  = 2,
+    "VERIO"    = 2,
+    "cat"      = 2,
+    "recon6"   = 2,
+    "recon7"   = 2
+  )) |>
+  column_spec(1, border_right = TRUE) |>
+  column_spec(c(3, 5, 7, 9), border_right = TRUE) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; mean = latent variable mean; harm. = harmonized latent variable mean; ",
+      "TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+:::
+
+```{r update_prep_no_correction}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+pd_mat <- update_pd_matrices
+pd_sub2 <- data.frame(matrix(nrow = 7, ncol = 5))
+colnames(pd_sub2) <- c("ROI", "pre", "post", "mean_pd_pre", "mean_pd_post")
+pd_sub2$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
+  pre <- pd_mat[[paste0(outcome, "_mean_pd_mat_no_correction")]]
+  post <- pd_mat[[paste0(outcome, "_mean_pd_mat_no_correction_adj")]]
+  n_comparisons <- sum(1:(ncol(pre)-1))
+  n_exceeding_pre <- length(which(pre >2)) # enumerate the comparisons with a PD > 2%
+  n_exceeding_post <- length(which(post >2)) # enumerate the comparisons with a PD > 2%
+  pd_sub2[pd_sub2$ROI == outcome, "pre"] <- paste0(n_exceeding_pre, "/", n_comparisons)
+  pd_sub2[pd_sub2$ROI == outcome, "post"] <- paste0(n_exceeding_post, "/", n_comparisons)
+  pd_sub2[pd_sub2$ROI == outcome, "mean_pd_pre"] <- mean(abs(pre), na.rm = T)
+  pd_sub2[pd_sub2$ROI == outcome, "mean_pd_post"] <- mean(abs(post), na.rm = T)
+}
+pd_sub2$mean_pd_pre <- round(pd_sub2$mean_pd_pre, digits = 2)
+pd_sub2$mean_pd_post <- round(pd_sub2$mean_pd_post, digits = 3)
+anovas <- update_anova_res
+pwcs <- update_pwcs
+for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
+  pre <- pwcs[[paste0(outcome, "_pwc_no_correction")]]
+  post <- pwcs[[paste0(outcome, "_pwc_no_correction_adj")]]
+  n_pwcs <- nrow(pre)
+  n_sig_pre <- length(which(pre$p.adj.signif != "ns"))
+  n_sig_post <- length(which(post$p.adj.signif != "ns"))
+  anovas[anovas$ROI == outcome, "n_sig_pre"] <- paste0(n_sig_pre, "/", n_pwcs)
+  anovas[anovas$ROI == outcome, "n_sig_post"] <- paste0(n_sig_post, "/", n_pwcs)
+}
+anovas$p_no_correction <- ifelse(anovas$p_no_correction < 0.001, formatC(anovas$p_no_correction, format = "e", digits = 2), anovas$p_no_correction)
+anovas$p_no_correction_adj <- ifelse(anovas$p_no_correction_adj < 0.001, formatC(anovas$p_no_correction_adj, format = "e", digits = 2), anovas$p_no_correction_adj)
+```
+
+```{r}
+#| label: tbl-update-icc-no-correction
+#| tbl-cap: "ICCs before and after harmonization without manually edited scans - cross-sectional dataset"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+df2 <- update_lme_icc_res_no_wmhv %>%
+  mutate(
+    ICC_CI = sprintf("%.2f (%.2f, %.2f)", ICC_no_correction, ICC_lower_95_CI_no_correction, ICC_upper_95_CI_no_correction),
+    ICC_adj_CI = sprintf("%.2f (%.2f, %.2f)", ICC_no_correction_adj, ICC_lower_95_CI_no_correction_adj, ICC_upper_95_CI_no_correction_adj))
+
+df2[, c("ROI", "ICC_CI", "ICC_adj_CI")] |>
+  kbl(
+    col.names = c(
+      "ROI",
+      "ICC (95% CI)",
+      "ICC (95% CI) harm."
+    ),
+    booktabs = TRUE,
+    linesep  = "",
+    align    = "lccc"
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  column_spec(1, width = "3cm") |>
+  column_spec(2:4, width = "4cm") |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; ICC = intraclass correlation coefficient; ",
+      "CI = confidence interval; harm. = harmonized with neuroHarmonize; ",
+      "TIV = total intracranial volume; ",
+      "TGMV = total grey matter volume; TWMV = total white matter volume; ",
+      "TCV = total cortical volume; LVV = bilateral lateral ventricle volume; ",
+      "HCV = bilateral hippocampal volume; AV = bilateral amygdala volume"
+    ),
+    general_title = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: tbl-update-pd-no-correction
+#| tbl-cap: "Percent differences before and after harmonization without manually edited scans - cross-sectional dataset"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+pd_sub2 |>
+  kbl(
+    col.names = c(
+      "ROI",
+      "PD > 2%",
+      "PD > 2% harm.",
+      "mean PD",
+      "mean PD harm."
+    ),
+    booktabs = TRUE,
+    linesep  = "",
+    align    = c("l", "r", "r", "r", "r") 
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; PD = percentage difference; harm. = harmonized with neuroHarmonize; ",
+      "TIV = total intracranial volume; TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: tbl-update-signif-no-correction
+#| tbl-cap: "Statistical significance of differences before and after harmonization without manually edited scans - cross-sectional dataset"
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+anovas[, c("ROI", "p_no_correction", "p_no_correction_adj", "n_sig_pre", "n_sig_post")] |>
+  kbl(
+    col.names = c(
+      "ROI",
+      "p-value",
+      "p-value harm.",
+      "sig. PWCs",
+      "sig. PWCs harm."
+    ),
+    booktabs = TRUE,
+    linesep  = "",
+    align    = c("l", "r", "r", "r", "r")
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size     = 10
+  ) |>
+  footnote(
+    general = paste0(
+      "ROI = region of interest; p-value = p-value from ANOVA; harm. = harmonized with neuroHarmonize; ",
+      "sig. PWCs = share of pairwise comparisons' (t-tests) p-values < 0.05; ",
+      "TIV = total intracranial volume; TGMV = total grey matter volume; ",
+      "TWMV = total white matter volume; TCV = total cortical volume; ",
+      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
+      "AV = bilateral amygdala volume"
+    ),
+    general_title  = "",
+    threeparttable = TRUE
+  )
+```
+
+# Reproduction of supplementary figures
+
+```{r update_raincloud_prep}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+library(ggdist)
+df <- read.csv("https://osf.io/deru3/?action=download", sep = ",", header=TRUE)
+df_wmhv <- read.csv("https://osf.io/mxde5/?action=download", sep = ",", header=TRUE)
+df$SITE <- gsub("_", " ", df$SITE)
+df$SITE <- factor(df$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
+df_wmhv$asinh <- asinh(df_wmhv$Lesions)
+# retransform LVV
+df$LVV_asinh <- df$LVV
+df$LVV <- sinh(df$LVV)
+colors = met.brewer(name="Java", n=5, type="discrete")
+colors <- colors[c(1,2,4,5)]
+colors <- rep(colors, each = 2)
+make_raincloud <- function(data, col, group_val, fill_color, dotsize = 1.25) {
+  data_filtered <- data %>% filter(SITE == group_val)
+  
+  ggplot(data_filtered, aes(x = 1, y = .data[[col]])) +
+    stat_halfeye(adjust = 0.5, width = 0.6, justification = -0.2,
+                 .width = 0, point_colour = NA, fill = fill_color) +
+    geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.5) +
+    stat_dots(side = "left", justification = 1.1, dotsize = dotsize) +
+    coord_flip() +
+    labs(title = as.character(group_val), x = NULL, y = col) +
+    theme_classic() +
+    theme(axis.text.y = element_blank(), axis.title.x = element_blank(), axis.ticks.y = element_blank())
+}
+# Create one plot per column
+cols <- c("TIV", "TGMV", "TWMV", "TCV", "LVV", "LVV_asinh", "HCV", "AV")
+group_vals <- c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat")
+plots_by_col <- lapply(cols, function(col) {
+  
+  group_plots <- mapply(make_raincloud,
+                        group_val = group_vals,
+                        fill_color = colors,
+                        MoreArgs = list(data = df, col = col),
+                        SIMPLIFY = FALSE)
+  
+  wrap_plots(group_plots, ncol = 2)
+})
+
+# Name the list by column for easy access
+names(plots_by_col) <- cols
+
+# create plots for WMHV
+# remove highest values to enable visualisation
+df_wmhv_cut <- df_wmhv[df_wmhv$Lesions < 5000,] 
+add_row_label <- function(plot_list, label) {
+  plot_list[[1]] <- plot_list[[1]] + 
+    labs(x = label) +
+    theme(axis.title.y = element_text(angle = 90, vjust = 0.5))
+  plot_list
+}
+unharmonized <- mapply(make_raincloud,
+       group_val = c("SKYRA", "VERIO"),
+       fill_color = colors[5:6],
+       MoreArgs = list(data = df_wmhv_cut, col = "Lesions"),
+       SIMPLIFY = FALSE)
+asinh  <- mapply(make_raincloud,
+                 group_val = c("SKYRA", "VERIO"),
+                 fill_color = colors[5:6],
+                 MoreArgs = list(data = df_wmhv_cut, col = "asinh"),
+                 SIMPLIFY = FALSE)
+norm  <- mapply(make_raincloud,
+                 group_val = c("SKYRA", "VERIO"),
+                 fill_color = colors[5:6],
+                 MoreArgs = list(data = df_wmhv_cut, col = "WMHV_norm"),
+                 SIMPLIFY = FALSE)
+unharmonized <- add_row_label(unharmonized, "original")
+asinh  <- add_row_label(asinh, "asinh")
+norm   <- add_row_label(norm, expression("log"[10]))
+wmhv_plots <- wrap_plots(unname(c(unharmonized, asinh, norm)), nrow = 3)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-tiv-raincloud
+#| fig-cap: "Raincloud plots of total intracranial volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TIV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-tgmv-raincloud
+#| fig-cap: "Raincloud plots of total grey matter volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TGMV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-twmv-raincloud
+#| fig-cap: "Raincloud plots of total white matter volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TWMV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-tcv-raincloud
+#| fig-cap: "Raincloud plots of total cortical volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$TCV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-lvv-raincloud
+#| fig-cap: "Raincloud plots of bilateral lateral ventricle volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$LVV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-lvv-asinh-raincloud
+#| fig-cap: "Raincloud plots of bilateral lateral ventricle volume by batch after inverse hyperbolic sine transformation in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$LVV_asinh)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-hcv-raincloud
+#| fig-cap: "Raincloud plots of bilateral hippocampal volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$HCV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-av-raincloud
+#| fig-cap: "Raincloud plots of bilateral amygdala volume by batch in cross-sectional data."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(plots_by_col$AV)
+```
+
+```{r fig.width=6, fig.height=12}
+#| label: fig-update-wmhv-raincloud
+#| fig-cap: "Raincloud plots of white matter hyperintensity volume by batch in cross-sectional data. 1st row: original data. 2nd row: after inverse hyperbolic sine transformation. 3rd row: after decadic logarithm transformation. The maximum value is not depicted."
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+#| out-width: "100%"
+#| out-height: "90%"
+#| dpi: 900
+print(wmhv_plots)
+```
+
