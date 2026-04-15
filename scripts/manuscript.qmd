@@ -1,11 +1,19 @@
 ---
 title: ""
-author-meta: ""
+author: " "
+date: ""
 format:
   pdf:
     papersize: a4
     keep-tex: true
+    template: custom-template.tex
+    cite-method: biblatex
     header-includes:
+      - \usepackage[backend=biber,style=apa]{biblatex}
+      - \DeclareLanguageMapping{english}{english-apa}
+      - \addbibresource{references.bib}
+      - \usepackage{sectsty}
+      - \allsectionsfont{\normalfont}
       - \usepackage{flafter}
       - \usepackage[section]{placeins}
       - \usepackage{tikz}
@@ -13,6 +21,28 @@ format:
       - \usepackage{authblk}
       - \renewcommand\Affilfont{\small}
       - \usepackage{orcidlink}
+      - \date{}
+    include-before-body:
+      text: |
+        \title{Potential and Limitations of ComBat Harmonization}
+        \author[1,2,3]{Laurenz Lammer\orcidlink{0000-0001-5612-4924}}
+        \author[1,4]{Frauke Beyer\orcidlink{0000-0001-5401-852X}}
+        \author[1,4,5]{A. Veronica Witte\orcidlink{0000-0001-9054-6688}}
+        \author[1,3,4,5,6]{Arno Villringer\orcidlink{0000-0003-2604-2404}}
+        \author[2,3,7]{Ulman Lindenberger\orcidlink{0000-0001-8428-6453}}
+        \author[8,9]{Denis Gerstorf\orcidlink{0000-0002-2133-9498}}
+        \author[2,7,10]{Andreas M. Brandmaier\orcidlink{0000-0001-8765-6982}}
+        \affil[1]{Department of Neurology, Max Planck Institute for Human Cognitive and Brain Sciences, Leipzig, Germany}
+        \affil[2]{Center for Lifespan Psychology, Max Planck Institute for Human Development, Berlin, Germany}
+        \affil[3]{Max Planck School of Cognition, Leipzig, Germany}
+        \affil[4]{Day Clinic for Cognitive Neurology, University Hospital Leipzig, Leipzig, Germany}
+        \affil[5]{Leipzig Research Centre for Civilization Diseases (LIFE), Leipzig University, Leipzig, Germany}
+        \affil[6]{MindBrainBody Institute, Berlin School of Mind and Brain, Humboldt University, Berlin, Germany}
+        \affil[7]{Max Planck UCL Centre for Computational Psychiatry and Ageing Research, Berlin, Germany, and, London, UK}
+        \affil[8]{Department of Psychology, Humboldt-Universität zu Berlin, Berlin, Germany}
+        \affil[9]{German Institute for Economic Research (DIW), Socio-Economic Panel, Berlin, Germany}
+        \affil[10]{Department of Psychology, MSB Medical School Berlin, Berlin, Germany}
+        \maketitle
     knitr:
       opts_chunk:
         dev: "cairo_pdf"
@@ -25,42 +55,27 @@ editor:
     wrap: sentence
 ---
 
-\title{Potential and Limitations of ComBat Harmonization}
-\author[1,2,3]{Laurenz Lammer\orcidlink{0000-0001-5612-4924}}
-\author[1,4]{Frauke Beyer\orcidlink{0000-0001-5401-852X}}
-\author[1,4,5]{A. Veronica Witte\orcidlink{0000-0001-9054-6688}}
-\author[1,3,4,5,6]{Arno Villringer\orcidlink{0000-0003-2604-2404}}
-\author[2,3,7]{Ulman Lidenberger\orcidlink{0000-0001-8428-6453}}
-\author[8,9]{Denis Gerstorf\orcidlink{0000-0002-2133-9498}}
-\author[2,7,10]{Andreas M. Brandmaier\orcidlink{0000-0001-8765-6982}}
-\affil[1]{Department of Neurology, Max Planck Institute for Human Cognitive and Brain Sciences, Leipzig, Germany}
-\affil[2]{Center for Lifespan Psychology, Max Planck Institute for Human Development, Berlin, Germany}
-\affil[3]{Max Planck School of Cognition, Leipzig, Germany}
-\affil[4]{Day Clinic for Cognitive Neurology, University Hospital Leipzig, Leipzig, Germany}
-\affil[5]{Leipzig Research Centre for Civilization Diseases (LIFE), Leipzig University, Leipzig, Germany}
-\affil[6]{MindBrainBody Institute, Berlin School of Mind and Brain, Humboldt University, Berlin, Germany}
-\affil[7]{Max Planck UCL Centre for Computational Psychiatry and Ageing Research, Berlin, Germany, and, London, UK}
-\affil[8]{Department of Psychology, Humboldt-Universität zu Berlin, Berlin, Germany}
-\affil[9]{German Institute for Economic Research (DIW), Socio-Economic Panel, Berlin, Germany}
-\affil[10]{Department of Psychology, MSB Medical School Berlin, Berlin, Germany}
-\maketitle
 ## Corresponding author
-Laurenz Lammer (lammer@cbs.mpg.de)
+
+Laurenz Lammer (lammer\@cbs.mpg.de)
 
 ## Author contributions
+
 Author roles were classified using the Contributor Role Taxonomy ([CRediT](https://credit.niso.org/)) as follows:
 
-**Conceptualization**: Laurenz Lammer, Frauke Beyer, Ulman Lidenberger, Denis Gerstorf, Andreas M. Brandmaier     
-**Methodology**: Laurenz Lammer, Frauke Beyer,  Andreas M. Brandmaier  
-**Investigation**: Frauke Beyer  
-**Software, Formal analysis, Visualization**: Laurenz Lammer  
-**Data Curation**: Laurenz Lammer, Frauke Beyer  
-**Resources, Supervision**: A. Veronica Witte, Arno Villringer, Ulman Lidenberger  
-**Funding acquisition**: A. Veronica Witte, Arno Villringer  
-**Writing – original draft**: Laurenz Lammer    
-**Writing – review & editing**: all authors  
+**Conceptualization**: Laurenz Lammer, Frauke Beyer, Ulman Lindenberger, Denis Gerstorf, Andreas M. Brandmaier\
+**Methodology**: Laurenz Lammer, Frauke Beyer, Andreas M. Brandmaier\
+**Investigation**: Frauke Beyer\
+**Software, Formal analysis, Visualization**: Laurenz Lammer\
+**Data Curation**: Laurenz Lammer, Frauke Beyer\
+**Resources, Supervision**: A. Veronica Witte, Arno Villringer, Ulman Lindenberger\
+**Funding acquisition**: A.
+Veronica Witte, Arno Villringer\
+**Writing – original draft**: Laurenz Lammer\
+**Writing – review & editing**: all authors
 
 \newpage
+\pagenumbering{arabic}
 
 # Abstract
 
@@ -81,6 +96,8 @@ Even with a follow-up period of six years, changes in most brain volumes are sma
 Overall, our results support the use of ComBat for the harmonization of heterogenous neuroimaging data but also delineate when harmonization fails.
 Further, our analyses demonstrate that the relative size of measurement error is a crucial determinant of the achievable agreement.
 We conclude that ComBat can be applied confidently in cross-sectional settings but caution is warranted in longitudinal designs.
+
+\newpage
 
 # Introduction
 
@@ -689,6 +706,8 @@ pd_sub2 |>
     threeparttable = TRUE
   )
 ```
+
+\FloatBarrier
 
 ```{r}
 #| label: fig-update
