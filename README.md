@@ -8,9 +8,12 @@ The study's preprint can be found [here]().
 
 - You can **reproduce** the results, tables and figures based on the travelling participant dataset by rendering the qmd document reproduction.qmd
   - the script downloads the data published on [osf](https://osf.io/n3eg8/overview) and runs all analyses
+    -  thus, the script requires an internet connection to run    
   - congruence with package versions used in our analyses can be attained with renv
     - all required documents are in the renv directory of this repository
-    - lines in the script can be uncommented to downloaded and load required package versions     
+    - execute the script renv_loader.R first to restore the matching R environment
+   
+
 - The data were prepared for analysis with the script: data_assembly.R
 - the harmonization was performed with: harmonization_with_longCombat.R & harmonization_with_neuroHarmonize.py
 - The data were analysed with the script: analysis.R
