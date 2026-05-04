@@ -8,6 +8,7 @@ format:
     header-includes:
       - \usepackage{flafter}
       - \usepackage[section]{placeins}
+      - \allsectionsfont{\normalfont}
       - \usepackage{tikz}
       - \usetikzlibrary{arrows, positioning, shapes, fit, backgrounds, calc, shapes.geometric}
     knitr:
@@ -33,16 +34,6 @@ We were not able to publish the longitudinal dataset but the data from the cross
 #| warning: false
 #| message: false
 #| error: false
-############ uncomment to enable renv ###################
-#if (!requireNamespace("renv", quietly = TRUE)) {
-#  install.packages("renv")
-#}
-
-# Then load it
-#library(renv)
-# restore from lockfile on github
-#renv::restore("lockfile = https://github.com/formal-methods-mpi/SegmentationHarmonizability/blob/main/renv/renv.lock")
-########### end of renv section #####################
 # load required packages
 # versions used in our analyses in respective comments
 library(tidyverse) # version 2.0.0
@@ -581,7 +572,7 @@ showtext_auto()
 theme_set(theme_classic(base_family = "firasans", base_size = 11))
 
 update_lme_icc_res_no_wmhv <- update_lme_icc_res[update_lme_icc_res$ROI != "WMHV",]
-pd_mat <- update_pd_matrices
+pd_mat <- outcomes$update_pd_matrices
 pd_sub2 <- data.frame(matrix(nrow = 7, ncol = 5))
 colnames(pd_sub2) <- c("ROI", "pre", "post", "mean_pd_pre", "mean_pd_post")
 pd_sub2$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
@@ -598,8 +589,8 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
 }
 pd_sub2$mean_pd_pre <- round(pd_sub2$mean_pd_pre, digits = 2)
 pd_sub2$mean_pd_post <- round(pd_sub2$mean_pd_post, digits = 3)
-anovas <- update_anova_res
-pwcs <- update_pwcs
+anovas <- outcomes$update_anova_res
+pwcs <- outcomes$update_pwcs
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   pre <- pwcs[[paste0(outcome, "_pwc")]]
   post <- pwcs[[paste0(outcome, "_pwc_adj")]]
@@ -611,7 +602,9 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
 }
 anovas$p <- ifelse(anovas$p < 0.001, formatC(anovas$p, format = "e", digits = 2), anovas$p)
 anovas$p_adj <- ifelse(anovas$p_adj < 0.001, formatC(anovas$p_adj, format = "e", digits = 2), anovas$p_adj)
-iced <- update_iced_res
+anovas$ges <- ifelse(anovas$ges < 0.001, formatC(anovas$ges, format = "e", digits = 2), anovas$ges)
+anovas$ges_adj <- ifelse(anovas$ges_adj < 0.001, formatC(anovas$ges_adj, format = "e", digits = 2), anovas$ges_adj)
+iced <- outcomes$update_iced_res
 iced <- iced[iced$ROI != "TIV",]
 iced[, 2:ncol(iced)] <- apply(iced[, 2:ncol(iced)], 2, function(x) ifelse(abs(as.numeric(x)) < 0.001 & as.numeric(x) != 0, formatC(as.numeric(x), format = "e", digits = 0), round(as.numeric(x), digits = 3)))
 ```
@@ -669,34 +662,46 @@ df2[, c("ROI", "ICC_CI", "ICC_adj_CI")] |>
 #| warning: false
 #| message: false
 #| error: false
-anovas[, c("ROI", "p", "p_adj", "n_sig_pre", "n_sig_post")] |>
+anovas[, c("ROI", "p", "ges", "n_sig_pre", "p_adj", "ges_adj", "n_sig_post")] |>
   kbl(
+    escape = FALSE,
     col.names = c(
       "ROI",
       "p-value",
-      "p-value harm.",
+      "$\\eta^2$",
       "sig. PWCs",
-      "sig. PWCs harm."
+      "p-value",
+      "$\\eta^2$",
+      "sig. PWCs"
     ),
     booktabs = TRUE,
     linesep  = "",
-    align    = c("l", "r", "r", "r", "r")
+    align    = c("l", "r", "r", "r", "r", "r", "r")
   ) |>
+    add_header_above(c(
+    " " = 1,
+    "unadjusted" = 3,
+    "harmonized" = 3
+  )) |>
   kable_styling(
     latex_options = c("hold_position", "scale_down"),
     font_size     = 10
   ) |>
   footnote(
-    general = paste0(
-      "ROI = region of interest; p-value = p-value from ANOVA; harm. = harmonized with neuroHarmonize; ",
-      "sig. PWCs = share of significant pairwise comparisons; ",
-      "TIV = total intracranial volume; TGMV = total grey matter volume; ",
-      "TWMV = total white matter volume; TCV = total cortical volume; ",
-      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
-      "AV = bilateral amygdala volume"
-    ),
-    general_title  = "",
-    threeparttable = TRUE
+  general = paste0(
+    "ROI = region of interest; p-value = p-value from ANOVA; ",
+    "$\\\\eta^2$", " = generalized ", "$\\\\eta^2$", " from ANOVA;",
+    "harm. = harmonized with neuroHarmonize; ",
+    "sig. PWCs = share of significant pairwise comparisons; ",
+    "TIV = total intracranial volume; TGMV = total grey matter volume; ",
+    "TWMV = total white matter volume; TCV = total cortical volume; ",
+    "LVV = bilateral lateral ventricle volume; ",
+    "HCV = bilateral hippocampal volume; ",
+    "AV = bilateral amygdala volume"
+  ),
+  general_title  = "",
+  threeparttable = TRUE,
+  escape = FALSE
   )
 ```
 
@@ -737,6 +742,10 @@ pd_sub2 |>
   )
 ```
 
+\FloatBarrier
+\newpage
+
+::: landscape
 ```{r}
 #| label: fig-update
 #| fig-cap: "Distribution of volumetric estimates by batch before and after harmonization in cross-sectional data \\newline TIV = Total Intracranial Volume; TGMV = Total Grey Matter Volume"
@@ -756,7 +765,7 @@ font_add_google("EB Garamond")
 colors = met.brewer(name="Java", n=5, type="discrete")
 colors <- colors[c(1,2,4,5)]
 # load the unadjusted data from the scanner update study 
-df_update <- read.csv("https://osf.io/deru3/?action=download", sep = ",", header=TRUE)
+df_update <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update.csv")
 # break each scanner-segmentation combination down to a scanner and a segmentation variable
 df_update$scanner <- ifelse(grepl("VER", df_update$SITE), "VERIO", "SKYRA")
 df_update <- df_update %>%
@@ -766,22 +775,44 @@ df_update <- df_update %>%
     grepl("recon6", SITE) ~ "recon6",
     grepl("recon7", SITE) ~ "recon7"
   ))
+# for unscaled age data
+QA <- read.csv("/data/pt_nro186_lifeupdate/Data/FREESURFER/QA/QA_list_short.csv")
+# remove empty rows
+# remove empty rows
+QA <- QA[1:121,]
+# create id col, add 0 that might got lost at the beginning/end, remove ., add "sub-"
+# first add 0 lost at the end
+QA$ID <- ifelse(nchar(sub(".*\\.", "", QA$ID)) == 1, paste0(QA$ID, "0"), QA$ID)
+QA$id <- ifelse(nchar(QA$ID) != 7, gsub("\\.", "", paste0("sub-" ,QA$ID)), gsub("\\.", "", paste0("sub-", "0", QA$ID)))
 
+# trim trailing spaces
+QA$id <- trimws(QA$id)
+QA$correction.necessary <- ifelse(is.na(QA$correction.necessary), 0, QA$correction.necessary)
+# rename German colnames
+QA <- QA %>%
+  rename(
+    "age" = "Alter_aktuell",
+    "gender" = "Geschlecht"
+  )
+df_update <- df_update %>%
+  select(id, TIV, TGMV, TWMV, TCV, LVV, HCV, AV, SITE) %>%
+  left_join(QA[,c("id", "correction.necessary", "age", "gender")], by = "id")
 
 # load the harmonized data from the scanner update study 
-df_update_adj <- read.csv("https://osf.io/6ynfj/?action=download", sep = ",", header=TRUE)
+df_update_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update_adj.csv", col.names = colnames(df_update)[2:8])
 # fill in the missing data from the unadjusted df (these cols must not be included during harmonization) 
 df_update_adj[,c("id", "SITE", "age", "gender")] <- df_update[,c("id", "SITE", "age", "gender")]
 df_update$SITE <- gsub("_", " ", df_update$SITE)
 df_update_adj$SITE <- gsub("_", " ", df_update_adj$SITE)
 df_update$SITE <- factor(df_update$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
 df_update_adj$SITE <- factor(df_update_adj$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
-df_update_wmhv <- read.csv("https://osf.io/mxde5/?action=download", sep = ",", header=TRUE)
+df_update_wmhv <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update.csv")
+df_update_wmhv_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update_adj.csv")
 df_update_wmhv$SITE <- ifelse(df_update_wmhv$scanner == "skyra", "SKYRA samseg", "VERIO samseg")
 df_update_wmhv$SITE <- factor(df_update_wmhv$SITE, levels = c("SKYRA samseg", "VERIO samseg"))
+df_update_wmhv_adj[,c("id", "SITE")] <- df_update_wmhv[,c("id", "SITE")]
 df_update_wmhv$WMHV <- df_update_wmhv$WMHV_norm
-df_update_wmhv_adj <- df_update_wmhv
-df_update_wmhv_adj$WMHV <- df_update_wmhv$WMHV_adj  
+df_update_wmhv_adj$WMHV <- df_update_wmhv_adj$X..WMHV_norm  
 plots <- list()
 comparisons <- list()
 dfs <- list(df_update = df_update, df_update_adj = df_update_adj)
@@ -820,7 +851,7 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV", "HCV", "AV")){
   y_range <- range(c(plots[[outcome]]$data[[outcome]], plots[[paste0(outcome, "_adj")]]$data[[outcome]]), na.rm = TRUE)
   plots[[outcome]] <- plots[[outcome]] + coord_cartesian(ylim = y_range)
   if(outcome %in% c("TGMV", "TCV", "HCV")){
-    plots[[outcome]] <- plots[[outcome]] + labs(x = "mean of measurements") + theme(axis.title.x = element_text(size = 5))
+    plots[[outcome]] <- plots[[outcome]] + labs(x = "individuals (sorted by mean across batches)") + theme(axis.title.x = element_text(size = 5, margin = margin(t = 6)))
   }
   plots[[paste0(outcome, "_adj")]] <- plots[[paste0(outcome, "_adj")]] + coord_cartesian(ylim = y_range)
   comparison <- wrap_plots(list(plots[[outcome]], plots[[paste0(outcome, "_adj")]]), nrow = 1) + plot_layout(guides = "collect") & theme(legend.position = "right")
@@ -857,7 +888,7 @@ for (name in names(wmhv_dfs)){
   plots[[paste0("WMHV", suffix)]] <- plt
 }
 y_range <- range(c(plots[["WMHV"]]$data[["WMHV"]], plots[[paste0("WMHV", "_adj")]]$data[["WMHV"]]), na.rm = TRUE)
-plots[["WMHV"]] <- plots[["WMHV"]] + coord_cartesian(ylim = y_range) + labs(x = "mean of measurements") + theme(axis.title.x = element_text(size = 5))
+plots[["WMHV"]] <- plots[["WMHV"]] + coord_cartesian(ylim = y_range) + labs(x = "individuals (sorted by mean across batches)") + theme(axis.title.x = element_text(size = 5, margin = margin(t = 6)))
 plots[[paste0("WMHV", "_adj")]] <- plots[[paste0("WMHV", "_adj")]] + coord_cartesian(ylim = y_range)
 comparison <- wrap_plots(list(plots[["WMHV"]], plots[[paste0("WMHV", "_adj")]]), nrow = 1) + plot_layout(guides = "collect") & theme(legend.position = "right")
 comparisons[["WMHV"]] <- comparison
@@ -919,10 +950,15 @@ p_combined <- wrap_plots(comparisons[[7]], comparisons[[8]],
 cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.1))
 ```
 
+\newpage
+:::
 
+\FloatBarrier
+
+We provide the corresponding Bland-Altman plots for observed values at each timepoint in the supplement (see @fig-ba-bl-tgmv to @fig-ba-fu-av).\
 The agreement between WMHV using the same segmentation method on different MRI machines in the cross-sectional data showed an ICC of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3)`) before and of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3)`) after harmonization.
 Measurements on the SKYRA were on average `r round(update_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(update_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of neuroHarmonize.
-A paired t-test of the batches was significant prior to harmonization (p-value = `r formatC(update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t-statistic = `r formatC(update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; df = `r update_pwcs$WMHV_norm_pwc$df`) but ceased to be so afterwards (p-value = `r update_pwcs$WMHV_adj_pwc_adj$p`; t-statistic = `r formatC(update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; df = `r update_pwcs$WMHV_adj_pwc_adj$df`).
+A paired t-test of the batches was significant prior to harmonization (p = `r formatC(update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t(`r update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; d = `r  round(abs((update_pwcs$WMHV_norm_pwc$statistic)/(sqrt(update_pwcs$WMHV_norm_pwc$n1))), digits = 2)`) but ceased to be so afterwards (p = `r  update_pwcs$WMHV_adj_pwc_adj$p`; t(`r update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; d = `r round(abs((update_pwcs$WMHV_adj_pwc_adj$statistic)/(sqrt(update_pwcs$WMHV_adj_pwc_adj$n1))), digits = 2)`).
 
 # Reproduction of supplementary tables
 
@@ -1137,6 +1173,7 @@ iced[, c("ROI", paste0(rep(c("truemean", "VERIOmean", "catmean", "recon6mean", "
   column_spec(c(3, 5, 7, 9), border_right = TRUE) |>
   footnote(
     general = paste0(
+      "true = true score with SKYRA and samseg as reference scanner and segmentation, respectively; ",
       "ROI = region of interest; mean = latent variable mean; harm. = harmonized latent variable mean; ",
       "TGMV = total grey matter volume; ",
       "TWMV = total white matter volume; TCV = total cortical volume; ",
@@ -1171,8 +1208,8 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
 }
 pd_sub2$mean_pd_pre <- round(pd_sub2$mean_pd_pre, digits = 2)
 pd_sub2$mean_pd_post <- round(pd_sub2$mean_pd_post, digits = 3)
-anovas <- update_anova_res
-pwcs <- update_pwcs
+anovas <- outcomes$update_anova_res
+pwcs <- outcomes$update_pwcs
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   pre <- pwcs[[paste0(outcome, "_pwc_no_correction")]]
   post <- pwcs[[paste0(outcome, "_pwc_no_correction_adj")]]
@@ -1276,34 +1313,46 @@ pd_sub2 |>
 #| warning: false
 #| message: false
 #| error: false
-anovas[, c("ROI", "p_no_correction", "p_no_correction_adj", "n_sig_pre", "n_sig_post")] |>
+anovas[, c("ROI", "p_no_correction", "ges_no_correction", "n_sig_pre", "p_no_correction_adj", "ges_no_correction_adj", "n_sig_post")] |>
   kbl(
+    escape = FALSE,
     col.names = c(
       "ROI",
       "p-value",
-      "p-value harm.",
+      "$\\eta^2$",
       "sig. PWCs",
-      "sig. PWCs harm."
+      "p-value",
+      "$\\eta^2$",
+      "sig. PWCs"
     ),
     booktabs = TRUE,
     linesep  = "",
-    align    = c("l", "r", "r", "r", "r")
+    align    = c("l", "r", "r", "r", "r", "r", "r")
   ) |>
+    add_header_above(c(
+    " " = 1,
+    "unadjusted" = 3,
+    "harmonized" = 3
+  )) |>
   kable_styling(
     latex_options = c("hold_position", "scale_down"),
     font_size     = 10
   ) |>
   footnote(
-    general = paste0(
-      "ROI = region of interest; p-value = p-value from ANOVA; harm. = harmonized with neuroHarmonize; ",
-      "sig. PWCs = share of pairwise comparisons' (t-tests) p-values < 0.05; ",
-      "TIV = total intracranial volume; TGMV = total grey matter volume; ",
-      "TWMV = total white matter volume; TCV = total cortical volume; ",
-      "LVV = bilateral lateral ventricle volume; HCV = bilateral hippocampal volume; ",
-      "AV = bilateral amygdala volume"
-    ),
-    general_title  = "",
-    threeparttable = TRUE
+  general = paste0(
+    "ROI = region of interest; p-value = p-value from ANOVA; ",
+    "$\\\\eta^2$", " = generalized ", "$\\\\eta^2$", " from ANOVA;",
+    "harm. = harmonized with neuroHarmonize; ",
+    "sig. PWCs = share of significant pairwise comparisons; ",
+    "TIV = total intracranial volume; TGMV = total grey matter volume; ",
+    "TWMV = total white matter volume; TCV = total cortical volume; ",
+    "LVV = bilateral lateral ventricle volume; ",
+    "HCV = bilateral hippocampal volume; ",
+    "AV = bilateral amygdala volume"
+  ),
+  general_title  = "",
+  threeparttable = TRUE,
+  escape = FALSE
   )
 ```
 
