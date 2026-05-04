@@ -7,7 +7,7 @@ The study's preprint can be found [here]().
 # Overview
 
 - You can **reproduce** the results, tables and figures based on the travelling participant dataset by rendering the qmd document reproduction.qmd
-  - the script downloads the data published on osf and runs all analyses
+  - the script downloads the data published on [osf](https://osf.io/n3eg8/overview) and runs all analyses
   - congruence with package versions used in our analyses can be attained with renv
     - all required documents are in the renv directory of this repository
     - lines in the script can be uncommented to downloaded and load required package versions     
