@@ -33,6 +33,16 @@ We were not able to publish the longitudinal dataset but the data from the cross
 #| warning: false
 #| message: false
 #| error: false
+############ uncomment to enable renv ###################
+#if (!requireNamespace("renv", quietly = TRUE)) {
+#  install.packages("renv")
+#}
+
+# Then load it
+#library(renv)
+# restore from lockfile on github
+#renv::restore("lockfile = https://github.com/formal-methods-mpi/SegmentationHarmonizability/blob/main/renv/renv.lock")
+########### end of renv section #####################
 # load required packages
 # versions used in our analyses in respective comments
 library(tidyverse) # version 2.0.0
