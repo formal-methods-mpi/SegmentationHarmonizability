@@ -5,12 +5,12 @@ format:
   pdf:
     papersize: a4
     keep-tex: true
+    # uncomment the following line if you have downloaded the custom template from github
+    # this template will ensure that the renderings are analogous to the ones in the manuscript
+    #template: custom-template.tex
     header-includes:
       - \usepackage{flafter}
       - \usepackage[section]{placeins}
-      - \allsectionsfont{\normalfont}
-      - \usepackage{tikz}
-      - \usetikzlibrary{arrows, positioning, shapes, fit, backgrounds, calc, shapes.geometric}
     knitr:
       opts_chunk:
         dev: "cairo_pdf"
@@ -25,7 +25,8 @@ editor:
 # Purpose of the script
 
 This script serves to allow the reproduction of the results of our study. 
-We were not able to publish the longitudinal dataset but the data from the cross-sectional scanner update study are uploaded to osf. 
+We were not able to publish the longitudinal dataset but the data from the cross-sectional scanner update study are uploaded to osf.\
+Please note that the confidence intervals for ICCs are bootstrapped so that slight differences to the values in the manuscript are to be expected. 
 
 # Reproduction of result presentation in the results section
 
@@ -572,7 +573,7 @@ showtext_auto()
 theme_set(theme_classic(base_family = "firasans", base_size = 11))
 
 update_lme_icc_res_no_wmhv <- update_lme_icc_res[update_lme_icc_res$ROI != "WMHV",]
-pd_mat <- outcomes$update_pd_matrices
+pd_mat <- update_pd_matrices
 pd_sub2 <- data.frame(matrix(nrow = 7, ncol = 5))
 colnames(pd_sub2) <- c("ROI", "pre", "post", "mean_pd_pre", "mean_pd_post")
 pd_sub2$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
@@ -589,8 +590,8 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
 }
 pd_sub2$mean_pd_pre <- round(pd_sub2$mean_pd_pre, digits = 2)
 pd_sub2$mean_pd_post <- round(pd_sub2$mean_pd_post, digits = 3)
-anovas <- outcomes$update_anova_res
-pwcs <- outcomes$update_pwcs
+anovas <- update_anova_res
+pwcs <- update_pwcs
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   pre <- pwcs[[paste0(outcome, "_pwc")]]
   post <- pwcs[[paste0(outcome, "_pwc_adj")]]
@@ -604,7 +605,7 @@ anovas$p <- ifelse(anovas$p < 0.001, formatC(anovas$p, format = "e", digits = 2)
 anovas$p_adj <- ifelse(anovas$p_adj < 0.001, formatC(anovas$p_adj, format = "e", digits = 2), anovas$p_adj)
 anovas$ges <- ifelse(anovas$ges < 0.001, formatC(anovas$ges, format = "e", digits = 2), anovas$ges)
 anovas$ges_adj <- ifelse(anovas$ges_adj < 0.001, formatC(anovas$ges_adj, format = "e", digits = 2), anovas$ges_adj)
-iced <- outcomes$update_iced_res
+iced <- update_iced_res
 iced <- iced[iced$ROI != "TIV",]
 iced[, 2:ncol(iced)] <- apply(iced[, 2:ncol(iced)], 2, function(x) ifelse(abs(as.numeric(x)) < 0.001 & as.numeric(x) != 0, formatC(as.numeric(x), format = "e", digits = 0), round(as.numeric(x), digits = 3)))
 ```
@@ -754,8 +755,7 @@ pd_sub2 |>
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "90%"
-#| dpi: 900
+#| out-height: "100%"
 library(tidyverse)
 library(MetBrewer)
 library(patchwork)
@@ -764,8 +764,6 @@ showtext_auto()
 font_add_google("EB Garamond")
 colors = met.brewer(name="Java", n=5, type="discrete")
 colors <- colors[c(1,2,4,5)]
-# load the unadjusted data from the scanner update study 
-df_update <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update.csv")
 # break each scanner-segmentation combination down to a scanner and a segmentation variable
 df_update$scanner <- ifelse(grepl("VER", df_update$SITE), "VERIO", "SKYRA")
 df_update <- df_update %>%
@@ -775,44 +773,19 @@ df_update <- df_update %>%
     grepl("recon6", SITE) ~ "recon6",
     grepl("recon7", SITE) ~ "recon7"
   ))
-# for unscaled age data
-QA <- read.csv("/data/pt_nro186_lifeupdate/Data/FREESURFER/QA/QA_list_short.csv")
-# remove empty rows
-# remove empty rows
-QA <- QA[1:121,]
-# create id col, add 0 that might got lost at the beginning/end, remove ., add "sub-"
-# first add 0 lost at the end
-QA$ID <- ifelse(nchar(sub(".*\\.", "", QA$ID)) == 1, paste0(QA$ID, "0"), QA$ID)
-QA$id <- ifelse(nchar(QA$ID) != 7, gsub("\\.", "", paste0("sub-" ,QA$ID)), gsub("\\.", "", paste0("sub-", "0", QA$ID)))
-
-# trim trailing spaces
-QA$id <- trimws(QA$id)
-QA$correction.necessary <- ifelse(is.na(QA$correction.necessary), 0, QA$correction.necessary)
-# rename German colnames
-QA <- QA %>%
-  rename(
-    "age" = "Alter_aktuell",
-    "gender" = "Geschlecht"
-  )
-df_update <- df_update %>%
-  select(id, TIV, TGMV, TWMV, TCV, LVV, HCV, AV, SITE) %>%
-  left_join(QA[,c("id", "correction.necessary", "age", "gender")], by = "id")
 
 # load the harmonized data from the scanner update study 
-df_update_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/df_update_adj.csv", col.names = colnames(df_update)[2:8])
+df_update_adj <- read.csv("https://osf.io/6ynfj/?action=download", sep = ",", header=TRUE)
+
 # fill in the missing data from the unadjusted df (these cols must not be included during harmonization) 
-df_update_adj[,c("id", "SITE", "age", "gender")] <- df_update[,c("id", "SITE", "age", "gender")]
 df_update$SITE <- gsub("_", " ", df_update$SITE)
-df_update_adj$SITE <- gsub("_", " ", df_update_adj$SITE)
-df_update$SITE <- factor(df_update$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
-df_update_adj$SITE <- factor(df_update_adj$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))  
-df_update_wmhv <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update.csv")
-df_update_wmhv_adj <- read.csv("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/wmhv_update_adj.csv")
+df_update$SITE <- factor(df_update$SITE, levels = c("SKYRA recon7", "VERIO recon7", "SKYRA recon6", "VERIO recon6", "SKYRA samseg", "VERIO samseg", "SKYRA cat", "VERIO cat"))
+df_update_adj[,c("id", "SITE", "age", "gender")] <- df_update[,c("id", "SITE", "age", "gender")]
 df_update_wmhv$SITE <- ifelse(df_update_wmhv$scanner == "skyra", "SKYRA samseg", "VERIO samseg")
 df_update_wmhv$SITE <- factor(df_update_wmhv$SITE, levels = c("SKYRA samseg", "VERIO samseg"))
-df_update_wmhv_adj[,c("id", "SITE")] <- df_update_wmhv[,c("id", "SITE")]
 df_update_wmhv$WMHV <- df_update_wmhv$WMHV_norm
-df_update_wmhv_adj$WMHV <- df_update_wmhv_adj$X..WMHV_norm  
+df_update_wmhv_adj <- df_update_wmhv
+df_update_wmhv_adj$WMHV <- df_update_wmhv$WMHV_adj
 plots <- list()
 comparisons <- list()
 dfs <- list(df_update = df_update, df_update_adj = df_update_adj)
@@ -910,8 +883,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "90%"
-#| dpi: 900
+#| out-height: "100%"
 p_combined <- wrap_plots(comparisons[[3]], comparisons[[4]],
                          nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
   theme(legend.position = "none", , plot.margin = margin(4,4,4,4))
@@ -926,8 +898,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "90%"
-#| dpi: 900
+#| out-height: "100%"
 p_combined <- wrap_plots(comparisons[[5]], comparisons[[6]], 
                          nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
   theme(legend.position = "none", , plot.margin = margin(4,4,4,4))
@@ -942,8 +913,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 #| message: false
 #| error: false
 #| out-width: "100%"
-#| out-height: "90%"
-#| dpi: 900
+#| out-height: "100%"
 p_combined <- wrap_plots(comparisons[[7]], comparisons[[8]], 
                          nrow = 2, ncol = 1, guides = "collect") + plot_layout(widths = 1) &
   theme(legend.position = "none", , plot.margin = margin(4,4,4,4))
@@ -955,7 +925,7 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 
 \FloatBarrier
 
-We provide the corresponding Bland-Altman plots for observed values at each timepoint in the supplement (see @fig-ba-bl-tgmv to @fig-ba-fu-av).\
+
 The agreement between WMHV using the same segmentation method on different MRI machines in the cross-sectional data showed an ICC of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3)`) before and of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3)`) after harmonization.
 Measurements on the SKYRA were on average `r round(update_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(update_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of neuroHarmonize.
 A paired t-test of the batches was significant prior to harmonization (p = `r formatC(update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t(`r update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; d = `r  round(abs((update_pwcs$WMHV_norm_pwc$statistic)/(sqrt(update_pwcs$WMHV_norm_pwc$n1))), digits = 2)`) but ceased to be so afterwards (p = `r  update_pwcs$WMHV_adj_pwc_adj$p`; t(`r update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; d = `r round(abs((update_pwcs$WMHV_adj_pwc_adj$statistic)/(sqrt(update_pwcs$WMHV_adj_pwc_adj$n1))), digits = 2)`).
@@ -1208,8 +1178,8 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
 }
 pd_sub2$mean_pd_pre <- round(pd_sub2$mean_pd_pre, digits = 2)
 pd_sub2$mean_pd_post <- round(pd_sub2$mean_pd_post, digits = 3)
-anovas <- outcomes$update_anova_res
-pwcs <- outcomes$update_pwcs
+anovas <- update_anova_res
+pwcs <- update_pwcs
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   pre <- pwcs[[paste0(outcome, "_pwc_no_correction")]]
   post <- pwcs[[paste0(outcome, "_pwc_no_correction_adj")]]
