@@ -35,6 +35,8 @@ Please note that the confidence intervals for ICCs are bootstrapped so that slig
 #| warning: false
 #| message: false
 #| error: false
+
+set.seed(1848)
 # load required packages
 # versions used in our analyses in respective comments
 library(tidyverse) # version 2.0.0
@@ -432,7 +434,7 @@ df_update_wmhv_wide <- df_update_wmhv[,c("id", "SITE", "WMHV_norm", "WMHV_adj")]
     values_from = c(WMHV_norm, WMHV_adj)
   )
 ############ Section 3.3.1: Calculation of ICCs ####################### 
-
+set.seed(1848)
 # add row to update_lme_icc_res
 update_lme_icc_res[nrow(update_lme_icc_res) + 1, "ROI"] <- "WMHV"
 
