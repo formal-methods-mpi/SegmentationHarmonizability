@@ -131,7 +131,7 @@ Volumetrics estimated using different software exhibit even larger discrepancies
 Even using cross-sectional or longitudinal segmentation pipelines of the same software version affects the results [@vidal-pineiro_reliability_2025].
 Haddad et al. showed that significance patterns of age-cortical thickness associations are more homogenous after harmonization but did not evaluate the effect on agreement between batches [@haddad_multisite_2023].
 
-Therefore, we investigated whether ComBat successfully harmonizes parameters of interest (such as hippocampal volume) in the presence of both scanner and software heterogeneity in a large travelling brain dataset.
+Therefore, we investigated whether ComBat successfully harmonizes parameters of interest (such as hippocampal volume) in the presence of both scanner and software heterogeneity in a large *travelling brain* dataset.
 Moreover, we provide an evaluation of the performance of ComBat in longitudinal neuroimaging data and its application to white matter hyperintensity volume.
 
 # Methods {#sec-methods}
@@ -537,7 +537,7 @@ We conducted five exploratory analyses:
 
 ## Preregistered analyses
 
-### Cross-sectional travelling brain dataset
+### Cross-sectional *travelling brain* dataset
 
 ```{r update_prep}
 #| echo: false
@@ -1250,8 +1250,8 @@ Importantly, large measurement errors substantially shrink effect estimates [@br
 Hence, IDA researchers should bear measurement error in mind when deciding on their methodology.\
 Improvements in measurement reliability through increased field strengths [@calabro_leveraging_2025] hold promise.
 Alternatively, cluster scanning [@elliott_precision_2026] at regular field strengths can mitigate measurement error by providing multiple indicators per timepoint [@von_oertzen_effect_2010].
-Quantitative multi-parameter mapping offers another solution to obtain parameter measures that are comparable across sites by measuring by providing absolute values of the longitudinal relaxation time T1 and longitudinal relaxation rate [@weiskopf_quantitative_2013; @weiskopf_unified_2011].
-sites and time points, However, neither is currently available on a large scale.
+Quantitative multi-parameter mapping offers another solution to obtain parameter measures that are comparable across sites by providing absolute values of the longitudinal relaxation time T1 and longitudinal relaxation rate [@weiskopf_quantitative_2013; @weiskopf_unified_2011].
+However, neither is currently available on a large scale.
 We would thus recommend the use of models that allow modelling observed values at each timepoint as dependent variables in longitudinal settings.
 Researchers could use linear mixed effects models to distinguish within- and between-participant effects of age [@van_de_pol_simple_2009].
 If at all used in integrative data analyses, change scores should be restricted to datasets with extensive follow-up periods and for ROIs with substantial change.
