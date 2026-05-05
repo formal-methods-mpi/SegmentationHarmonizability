@@ -24,15 +24,16 @@
 # 3.3 Scanner update WMHV
 
 # load required packages
-library(tidyverse)
-library(lme4)
-library(rstatix)
-library(glue)
-library(lavaan)
-library(BlandAltmanLeh)
-library(patchwork)
-library(showtext)
+library(tidyverse) # version 2.0.0
+library(lme4) # version 1.1-38
+library(rstatix) # version 0.7.3
+library(glue) # version 1.8.0
+library(lavaan) # version 0.6-21
+library(BlandAltmanLeh) # version 0.3.1
+library(patchwork) # version 1.3.1
+library(showtext) # 0.9-7
 
+set.seed(1848)
 
 ############ Section 1: The scanner update dataset #######################
 setwd("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/scanner_update/Data/")
@@ -416,7 +417,7 @@ for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
     for (combination in combs){
       plt <- bland.altman.plot(group1 = df[[combination[1]]], group2 = df[[combination[2]]], 
                                graph.sys = "ggplot2", conf.int=.95, pch=19)
-      plt <- plt + labs(title = paste0(gsub("_", " ", combination[1]), " vs. ", gsub("_", " ", combination[2]))) + theme_bw(base_family = "Charter") + 
+      plt <- plt + labs(title = paste0(gsub("_", " ", combination[1]), " vs. ", gsub("_", " ", combination[2]))) + theme_bw(base_family = "garamond") + 
         theme(plot.title = element_text(hjust = 0.5, size = 12))
       plot_list[[paste0(combination[1], " vs. ", combination[2])]] <- plt
     }
@@ -805,7 +806,7 @@ for (outcome in c("dTGMV", "dTCV", "dLVV",  "dHCV", "dAV")) {
     y_coord_b <- -sd_val/2
     plt <- bland.altman.plot(group1 = df[[cols[1]]], group2 = df[[cols[2]]], 
                              graph.sys = "ggplot2", conf.int=.95, pch=19)
-    plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme_classic(base_family = "Charter") + theme(plot.title = element_text(family = "serif", hjust = 0.5, size = 13))
+    plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme_bw(base_family = "garamond") + theme(plot.title = element_text(family = "garamond", hjust = 0.5, size = 13))
     # add line to idicate size of SD
     plt <- plt + 
       geom_segment(
@@ -1052,7 +1053,7 @@ for (outcome in c("TGMV", "TCV", "LVV",  "HCV", "AV")) {
     y_coord_b <- -sd_val/2
     plt <- bland.altman.plot(group1 = df[[cols[1]]], group2 = df[[cols[2]]], 
                              graph.sys = "ggplot2", conf.int=.95, pch=19)
-    plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme_bw(base_family = "Charter") + theme(plot.title = element_text(hjust = 0.5, size = 13))
+    plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme_bw(base_family = "garamond") + theme(plot.title = element_text(hjust = 0.5, size = 13))
     plt <- plt + 
       geom_segment(
         x = x_coord, xend = x_coord,
@@ -1151,7 +1152,7 @@ df_update_wmhv_wide <- df_update_wmhv[,c("id", "SITE", "WMHV_norm", "WMHV_adj")]
     values_from = c(WMHV_norm, WMHV_adj)
   )
 ############ Section 3.3.1: Calculation of ICCs ####################### 
-
+set.seed(1848)
 # add row to update_lme_icc_res
 update_lme_icc_res[nrow(update_lme_icc_res) + 1, "ROI"] <- "WMHV"
 
@@ -1263,7 +1264,7 @@ for (outcome in c("WMHV_norm", "WMHV_adj")) {
   y_coord_b <- -sd_val/2
   plt <- bland.altman.plot(group1 = df_update_wmhv_wide[[cols[1]]], group2 = df_update_wmhv_wide[[cols[2]]], 
                            graph.sys = "ggplot2", conf.int=.95, pch=19)
-  plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme(plot.title = element_text(size = 12), base_family = "Charter")
+  plt <- plt + labs(title = paste0(cols[1], " vs. ", cols[2])) + theme(plot.title = element_text(size = 12), base_family = "garamond")
   # add line to idicate size of SD
   plt <- plt + 
     geom_segment(
