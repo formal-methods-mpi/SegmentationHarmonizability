@@ -1251,7 +1251,7 @@ Hence, IDA researchers should bear measurement error in mind when deciding on th
 Improvements in measurement reliability through increased field strengths [@calabro_leveraging_2025] hold promise.
 Alternatively, cluster scanning [@elliott_precision_2026] at regular field strengths can mitigate measurement error by providing multiple indicators per timepoint [@von_oertzen_effect_2010].
 Quantitative multi-parameter mapping offers another solution to obtain parameter measures that are comparable across sites by providing absolute values of the longitudinal relaxation time T1 and longitudinal relaxation rate [@weiskopf_quantitative_2013; @weiskopf_unified_2011].
-However, neither is currently available on a large scale.
+However, none of these solutions is yet available on a large scale.
 We would thus recommend the use of models that allow modelling observed values at each timepoint as dependent variables in longitudinal settings.
 Researchers could use linear mixed effects models to distinguish within- and between-participant effects of age [@van_de_pol_simple_2009].
 If at all used in integrative data analyses, change scores should be restricted to datasets with extensive follow-up periods and for ROIs with substantial change.
