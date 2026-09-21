@@ -675,11 +675,9 @@ font_add_google("Fira Sans", "firasans")
 showtext_auto()
 theme_set(theme_classic(base_family = "firasans", base_size = 11))
 # load and prepare results 
-load("/data/pt_life/ResearchProjects/LLammer/intergeneration/segmentation_harmonization/Results/outcomes.RData")
-update_lme_icc_res <- outcomes$update_lme_icc_res
 update_lme_icc_res_no_wmhv <- update_lme_icc_res[update_lme_icc_res$ROI != "WMHV",]
-pd_dir <- outcomes$update_dir_pd_matrices
-pd_undir <- outcomes$update_undir_pd_matrices
+pd_dir <- update_dir_pd_matrices
+pd_undir <- update_undir_pd_matrices
 pd_sub2 <- data.frame(matrix(nrow = 7, ncol = 7))
 colnames(pd_sub2) <- c("ROI", "pre_dir", "post_dir", "mean_pd_pre_dir", "mean_pd_post_dir",
                        "mean_pd_pre_undir", "mean_pd_post_undir")
@@ -703,8 +701,8 @@ pd_sub2$mean_pd_pre_dir <- round(pd_sub2$mean_pd_pre_dir, digits = 2)
 pd_sub2$mean_pd_post_dir <- round(pd_sub2$mean_pd_post_dir, digits = 3)
 pd_sub2$mean_pd_pre_undir <- round(pd_sub2$mean_pd_pre_undir, digits = 2)
 pd_sub2$mean_pd_post_undir <- round(pd_sub2$mean_pd_post_undir, digits = 3)
-anovas <- outcomes$update_anova_res
-pwcs <- outcomes$update_pwcs
+anovas <- update_anova_res
+pwcs <- update_pwcs
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   pre <- pwcs[[paste0(outcome, "_pwc")]]
   post <- pwcs[[paste0(outcome, "_pwc_adj")]]
@@ -719,7 +717,7 @@ anovas$p_adj <- ifelse(anovas$p_adj < 0.001, formatC(anovas$p_adj, format = "e",
 anovas$ges <- ifelse(anovas$ges < 0.001, formatC(anovas$ges, format = "e", digits = 2), anovas$ges)
 anovas$ges_adj <- ifelse(anovas$ges_adj < 0.001, formatC(anovas$ges_adj, format = "e", digits = 2), anovas$ges_adj)
 
-iced <- outcomes$update_iced_res
+iced <- update_iced_res
 iced <- iced[iced$ROI != "TIV",]
 iced[, 2:ncol(iced)] <- apply(iced[, 2:ncol(iced)], 2, function(x) ifelse(abs(as.numeric(x)) < 0.001 & as.numeric(x) != 0, formatC(as.numeric(x), format = "e", digits = 0), round(as.numeric(x), digits = 3)))
 
@@ -1052,9 +1050,9 @@ cowplot::plot_grid(p_combined, legend_only_plot, ncol = 1, rel_heights = c(1, 0.
 \FloatBarrier
 
 
-The agreement between WMHV using the same segmentation method on different MRI machines in the cross-sectional data showed an ICC of `r round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3)` (95% CI: `r  round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3)`--`r  round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3)`) before and of `r round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3)` (95% CI: `r  round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3)`--`r  round(outcomes$update_lme_icc_res[outcomes$update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3)`) after harmonization.
-Measurements on the SKYRA were on average `r round(outcomes$update_dir_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(outcomes$update_dir_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of `neuroHarmonize()`.
-A paired t-test of the batches was significant prior to harmonization (p = `r formatC(outcomes$update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t(`r outcomes$update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(outcomes$update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; d = `r  round(abs((outcomes$update_pwcs$WMHV_norm_pwc$statistic)/(sqrt(outcomes$update_pwcs$WMHV_norm_pwc$n1))), digits = 2)`) but ceased to be so afterwards (p = `r  outcomes$update_pwcs$WMHV_adj_pwc_adj$p`; t(`r outcomes$update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(outcomes$update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; d = `r round(abs((outcomes$update_pwcs$WMHV_adj_pwc_adj$statistic)/(sqrt(outcomes$update_pwcs$WMHV_adj_pwc_adj$n1))), digits = 2)`).
+The agreement between WMHV using the same segmentation method on different MRI machines in the cross-sectional data showed an ICC of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI"], digits = 3)`) before and of `r round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_adj"], digits = 3)` (95% CI: `r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_lower_95_CI_adj"], digits = 3)`--`r  round(update_lme_icc_res[update_lme_icc_res$ROI == "WMHV", "ICC_upper_95_CI_adj"], digits = 3)`) after harmonization.
+Measurements on the SKYRA were on average `r round(update_dir_pd_matrices$WMHV_norm_mean_pd_mat[1,2], digits = 1)`% larger before harmonization but only `r abs(round(update_dir_pd_matrices$WMHV_adj_mean_pd_mat_adj[1,2], digits = 1))`% smaller after the application of `neuroHarmonize()`.
+A paired t-test of the batches was significant prior to harmonization (p = `r formatC(update_pwcs$WMHV_norm_pwc$p, digits = 2, format = "e")`; t(`r update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(update_pwcs$WMHV_norm_pwc$statistic, digits = 2, format = "g")`; d = `r  round(abs((update_pwcs$WMHV_norm_pwc$statistic)/(sqrt(update_pwcs$WMHV_norm_pwc$n1))), digits = 2)`) but ceased to be so afterwards (p = `r  update_pwcs$WMHV_adj_pwc_adj$p`; t(`r update_pwcs$WMHV_adj_pwc_adj$df`) = `r formatC(update_pwcs$WMHV_adj_pwc_adj$statistic, digits = 2, format = "g")`; d = `r round(abs((update_pwcs$WMHV_adj_pwc_adj$statistic)/(sqrt(update_pwcs$WMHV_adj_pwc_adj$n1))), digits = 2)`).
 
 Levene's test of the cross-sectional dataset produced significant differences in variances for some but not all ROIs prior to harmonization. 
 F- values ranged from `r round(min(levene_wide$fval_), digits = 2)` for `r levene_wide[which.min(levene_wide$fval_), "outcome"]` to `r round(max(levene_wide$fval_), digits = 2)` for `r levene_wide[which.max(levene_wide$fval_), "outcome"]`.
@@ -1071,7 +1069,7 @@ scanner_software_comp <- data.frame(matrix(nrow = 7, ncol = 3))
 colnames(scanner_software_comp) <- c("ROI", "within_scanner_diff", "within_software_diff")
 scanner_software_comp$ROI <- c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")
 # start with scanner update
-pd <- outcomes$update_dir_pd_matrices
+pd <- update_dir_pd_matrices
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   mat <- pd[[paste0(outcome,"_mean_pd_mat")]]
   transf_mat <- abs(mat) %>%
@@ -1347,8 +1345,8 @@ iced[, c("ROI", paste0(rep(c("truemean", "VERIOmean", "catmean", "recon6mean", "
 #| warning: false
 #| message: false
 #| error: false
-pd_dir <- outcomes$update_dir_pd_matrices
-pd_undir <- outcomes$update_undir_pd_matrices
+pd_dir <- update_dir_pd_matrices
+pd_undir <- update_undir_pd_matrices
 pd_sub2 <- data.frame(matrix(nrow = 7, ncol = 7))
 colnames(pd_sub2) <- c("ROI", "pre_dir", "post_dir", "mean_pd_pre_dir", "mean_pd_post_dir",
                        "mean_pd_pre_undir", "mean_pd_post_undir")
@@ -1373,8 +1371,8 @@ pd_sub2$mean_pd_post_dir <- round(pd_sub2$mean_pd_post_dir, digits = 3)
 pd_sub2$mean_pd_pre_undir <- round(pd_sub2$mean_pd_pre_undir, digits = 2)
 pd_sub2$mean_pd_post_undir <- round(pd_sub2$mean_pd_post_undir, digits = 3)
 
-anovas <- outcomes$update_anova_res
-pwcs <- outcomes$update_pwcs
+anovas <- update_anova_res
+pwcs <- update_pwcs
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")){
   pre <- pwcs[[paste0(outcome, "_pwc_no_correction")]]
   post <- pwcs[[paste0(outcome, "_pwc_no_correction_adj")]]
@@ -1532,7 +1530,6 @@ anovas[, c("ROI", "p_no_correction", "ges_no_correction", "n_sig_pre", "p_no_cor
 #| warning: false
 #| message: false
 #| error: false
-levene_update <- outcomes$levene_update
 levene_wide <- levene_update %>%
   pivot_wider(
     names_from = df,
@@ -1776,7 +1773,7 @@ print(wmhv_plots)
 #| message: false
 #| error: false
 library(reshape2)
-pd_mat <- outcomes$update_dir_pd_matrices
+pd_mat <- update_dir_pd_matrices
 pd_heatmaps <- list()
 for (outcome in c("TIV", "TGMV", "TWMV", "TCV", "LVV",  "HCV", "AV")) {
   for (suffix in c("", "_adj")) {
