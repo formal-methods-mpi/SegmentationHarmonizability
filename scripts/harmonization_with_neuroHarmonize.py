@@ -13,6 +13,9 @@ for name in ["", "_no_correction"]:
     # run harmonization and store the adjusted data
     model, data_adj = harmonizationLearn(volumes, covars, smooth_terms=['age'])
     np.savetxt("df_update" + name + '_adj.csv', data_adj, delimiter=",", fmt="%f", header="TIV, TGMV, TWMV, TCV, LVV, HCV, AV")
+    model, data_adj = harmonizationLearn(volumes, covars, smooth_terms=['age'], eb= False)
+    np.savetxt("df_update" + name + '_adj_no_eb.csv', data_adj, delimiter=",", fmt="%f",
+           header="TIV, TGMV, TWMV, TCV, LVV, HCV, AV")
 # harmonize the scanner update WMHV data
 data = pd.read_csv('wmhv_update.csv')
 volumes = data.loc[:, ["WMHV_norm"]]
@@ -63,6 +66,11 @@ for name in ["", "_wmhv" , "_no_correction", "_cross"]:
         # adjust values using bl model
         fu_data_adj = harmonizationApply(fu_volumes, fu_covars, bl_model)
         np.savetxt("df_life" + name + '_fu_adj.csv', fu_data_adj, delimiter=",", fmt="%f", header="TGMV, TCV, LVV, HCV, AV")
+        bl_model, bl_data_adj = harmonizationLearn(bl_volumes, bl_covars, smooth_terms=['AGE'], eb=False, smooth_term_bounds=(age_min, age_max))
+        np.savetxt("df_life" + name + '_bl_adj_no_eb.csv', bl_data_adj, delimiter=",", fmt="%f", header="TGMV, TCV, LVV, HCV, AV")
+        # adjust values using bl model
+        fu_data_adj = harmonizationApply(fu_volumes, fu_covars, bl_model)
+        np.savetxt("df_life" + name + '_fu_adj_no_eb.csv', fu_data_adj, delimiter=",", fmt="%f", header="TGMV, TCV, LVV, HCV, AV")
 
 ## harmonize change scores immediately for exploratory analysis
 for name in ["_changes", "_wmhv_changes"]:
@@ -81,3 +89,4 @@ for name in ["_changes", "_wmhv_changes"]:
     else:
         model, data_adj = harmonizationLearn(volumes, covars, smooth_terms=['AGE'])
         np.savetxt("df_life" + name + '_adj.csv', data_adj, delimiter=",", fmt="%f", header="TGMV, TCV, LVV, HCV, AV")
+
